@@ -1,0 +1,4 @@
+python-telegram-bot[job-queue,rate-limiter]==22.8
+requests==2.34.2
+beautifulsoup4==4.15.0
+python-dotenv==1.2.3

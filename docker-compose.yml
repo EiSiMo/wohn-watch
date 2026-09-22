@@ -1,0 +1,20 @@
+services:
+  bot:
+    build: .
+    container_name: wohn-watch
+    restart: unless-stopped
+    # Telegram is polled outbound — nothing needs to be reachable from outside,
+    # so this service publishes and exposes no ports at all.
+    environment:
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - BERLIN_WOHNEN_USERNAME=${BERLIN_WOHNEN_USERNAME}
+      - BERLIN_WOHNEN_PASSWORD=${BERLIN_WOHNEN_PASSWORD}
+      - SCRAPE_INTERVAL_SECONDS=${SCRAPE_INTERVAL_SECONDS:-60}
+      - FLAT_RETENTION_DAYS=${FLAT_RETENTION_DAYS:-30}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - DATA_DIR=/data
+    volumes:
+      - wohnwatch_data:/data
+
+volumes:
+  wohnwatch_data:
