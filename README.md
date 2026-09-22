@@ -54,9 +54,31 @@ Domain der Inserats-URL.
 
 `/start` `/filter` `/status` `/pause` `/resume` `/problem` `/stop` `/hilfe`
 
-`/stop` löscht Chat, Filter und Zustellprotokoll per `ON DELETE CASCADE`
-endgültig. `/problem` nennt die Support-Adresse. Alles andere — Text, Sticker,
-Fotos — wird mit einer kurzen Befehlsübersicht beantwortet, nie mit Schweigen.
+`/stop` löscht Chat, Filter, Zustellprotokoll und Nutzungslog per
+`ON DELETE CASCADE` endgültig. `/problem` nennt die Support-Adresse. Alles
+andere — Text, Sticker, Fotos — wird mit einer kurzen Befehlsübersicht
+beantwortet, nie mit Schweigen.
+
+## Nutzungslog
+
+Jede eingehende Nachricht, jeder Button-Klick und jeder verschickte Treffer
+landet in der Tabelle `events`. Ausgewertet wird das mit:
+
+```bash
+.venv/bin/python -m app.stats                 # Standard: 14 Tage
+.venv/bin/python -m app.stats --days 30 --tail 50
+```
+
+Der Bericht zeigt Gesamtzahlen, Verkehr pro Tag, Befehlshäufigkeit und die
+aktivsten Chats.
+
+Zwei Dinge sind dabei bewusst getrennt: das **Protokoll** hängt am Chat und
+verschwindet mit `/stop`, die **anonymen Gesamtzähler** in `meta` überleben,
+damit eine einzelne Löschung nicht die Statistik umschreibt. Das Protokoll
+wird nach `EVENT_RETENTION_DAYS` (Standard 90) gekürzt, die Zähler nie.
+
+Dass Nachrichten protokolliert werden, steht so auch in `/hilfe` — wer das
+ändert, muss den Text mitändern.
 
 ## Lokal starten
 

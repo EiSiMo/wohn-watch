@@ -17,7 +17,7 @@ logger = logging.getLogger("wohnwatch.callbacks")
 
 # Which screen a set/toggle action belongs to, so we can re-render in place.
 _SCREEN_OF = {
-    "rmin": "rooms", "rmax": "rooms", "rent": "rent", "size": "size", "wbs": "wbs",
+    "rmin": "rmin", "rmax": "rmax", "rent": "rent", "size": "size", "wbs": "wbs",
 }
 
 _FIELD_OF = {"rmin": "rooms_min", "rmax": "rooms_max", "rent": "max_rent", "size": "min_size"}

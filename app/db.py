@@ -129,6 +129,19 @@ MIGRATIONS: list[str] = [
         value TEXT NOT NULL
     );
     """,
+    # v2 — usage log
+    """
+    CREATE TABLE IF NOT EXISTS events (
+        id        INTEGER PRIMARY KEY AUTOINCREMENT,
+        ts        TEXT    NOT NULL,
+        chat_id   INTEGER REFERENCES chats(chat_id) ON DELETE CASCADE,
+        direction TEXT    NOT NULL,          -- 'in' | 'out' | 'sys'
+        kind      TEXT    NOT NULL,          -- command | text | callback | match | reply | ...
+        detail    TEXT    NOT NULL DEFAULT ''
+    );
+    CREATE INDEX IF NOT EXISTS idx_events_ts ON events(ts DESC);
+    CREATE INDEX IF NOT EXISTS idx_events_chat ON events(chat_id);
+    """,
 ]
 
 
@@ -170,14 +183,18 @@ def ensure_chat(chat_id: int) -> dict:
     """Create the chat and its filter row if they don't exist yet. Idempotent."""
     with _lock, _tx() as c:
         ts = now_iso()
-        c.execute(
+        cur = c.execute(
             "INSERT OR IGNORE INTO chats(chat_id, created_at, updated_at) VALUES (?, ?, ?)",
             (chat_id, ts, ts),
         )
+        created = cur.rowcount == 1
         c.execute(
             "INSERT OR IGNORE INTO chat_filters(chat_id, updated_at) VALUES (?, ?)",
             (chat_id, ts),
         )
+    if created:
+        incr_meta("chats_created_total")
+        log_event(chat_id, "sys", "chat_created")
     return get_chat(chat_id)
 
 
@@ -200,9 +217,16 @@ def set_chat(chat_id: int, **fields) -> None:
 
 
 def delete_chat(chat_id: int) -> None:
-    """Hard delete — cascades chat_filters and notifications."""
+    """Hard delete — cascades chat_filters, notifications and events.
+
+    The per-chat log goes with it, which is what /hilfe promises. The lifetime
+    counters in `meta` are anonymous totals and deliberately survive, so usage
+    statistics don't get rewritten by a single deletion.
+    """
     with _lock:
-        _get_conn().execute("DELETE FROM chats WHERE chat_id = ?", (chat_id,))
+        cur = _get_conn().execute("DELETE FROM chats WHERE chat_id = ?", (chat_id,))
+    if cur.rowcount:
+        incr_meta("chats_deleted_total")
 
 
 def list_notifiable_chats() -> list[dict]:
@@ -371,6 +395,94 @@ def count_notifications(chat_id: int) -> int:
         "SELECT COUNT(*) AS n FROM notifications WHERE chat_id = ? AND ok = 1",
         (chat_id,),
     ).fetchone()["n"])
+
+
+# ---------------------------------------------------------------------------
+# Usage log
+# ---------------------------------------------------------------------------
+
+MAX_DETAIL_CHARS = 300
+
+
+def log_event(chat_id: int | None, direction: str, kind: str, detail: str = "") -> None:
+    """Record one interaction. Best-effort: logging must never break a reply."""
+    try:
+        with _lock:
+            _get_conn().execute(
+                "INSERT INTO events(ts, chat_id, direction, kind, detail) VALUES (?, ?, ?, ?, ?)",
+                (now_iso(), chat_id, direction, kind, (detail or "")[:MAX_DETAIL_CHARS]),
+            )
+        incr_meta(f"ev_{direction}_{kind}")
+    except Exception:
+        logger.exception("failed to log event %s/%s", direction, kind)
+
+
+def recent_events(limit: int = 50, chat_id: int | None = None) -> list[dict]:
+    sql = "SELECT * FROM events"
+    args: list = []
+    if chat_id is not None:
+        sql += " WHERE chat_id = ?"
+        args.append(chat_id)
+    sql += " ORDER BY id DESC LIMIT ?"
+    args.append(limit)
+    return [_row(r) for r in _get_conn().execute(sql, args).fetchall()]
+
+
+def events_per_day(days: int = 14) -> list[dict]:
+    cutoff = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat(
+        timespec="microseconds"
+    )
+    rows = _get_conn().execute(
+        "SELECT substr(ts, 1, 10) AS day, direction, kind, COUNT(*) AS n "
+        "FROM events WHERE ts >= ? GROUP BY day, direction, kind ORDER BY day DESC",
+        (cutoff,),
+    ).fetchall()
+    return [_row(r) for r in rows]
+
+
+def command_counts(limit: int = 15) -> list[dict]:
+    rows = _get_conn().execute(
+        "SELECT detail AS command, COUNT(*) AS n FROM events "
+        "WHERE direction = 'in' AND kind = 'command' "
+        "GROUP BY detail ORDER BY n DESC LIMIT ?",
+        (limit,),
+    ).fetchall()
+    return [_row(r) for r in rows]
+
+
+def chat_activity(limit: int = 20) -> list[dict]:
+    rows = _get_conn().execute(
+        "SELECT c.chat_id, c.state, c.created_at, "
+        "       (SELECT COUNT(*) FROM events e WHERE e.chat_id = c.chat_id AND e.direction = 'in') AS msgs, "
+        "       (SELECT COUNT(*) FROM notifications n WHERE n.chat_id = c.chat_id AND n.ok = 1) AS matches, "
+        "       (SELECT MAX(ts) FROM events e WHERE e.chat_id = c.chat_id) AS last_seen "
+        "FROM chats c ORDER BY last_seen DESC LIMIT ?",
+        (limit,),
+    ).fetchall()
+    return [_row(r) for r in rows]
+
+
+def prune_events(older_than_days: int) -> int:
+    cutoff = (datetime.now(timezone.utc) - timedelta(days=older_than_days)).isoformat(
+        timespec="microseconds"
+    )
+    with _lock:
+        cur = _get_conn().execute("DELETE FROM events WHERE ts < ?", (cutoff,))
+        return cur.rowcount
+
+
+def counters() -> dict[str, int]:
+    """The lifetime totals that survive chat deletion."""
+    rows = _get_conn().execute(
+        "SELECT key, value FROM meta WHERE key LIKE 'ev_%' OR key LIKE 'chats_%'"
+    ).fetchall()
+    out = {}
+    for r in rows:
+        try:
+            out[r["key"]] = int(r["value"])
+        except (TypeError, ValueError):
+            continue
+    return out
 
 
 # ---------------------------------------------------------------------------

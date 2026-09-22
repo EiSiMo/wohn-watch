@@ -165,6 +165,10 @@ async def prune_job(context: ContextTypes.DEFAULT_TYPE) -> None:
     if removed:
         logger.info("pruned %d flats older than %d days",
                     removed, settings.FLAT_RETENTION_DAYS)
+    dropped = db.prune_events(settings.EVENT_RETENTION_DAYS)
+    if dropped:
+        logger.info("pruned %d log events older than %d days",
+                    dropped, settings.EVENT_RETENTION_DAYS)
     dupes = db.duplicate_source_ids()
     if dupes:
         # See the "flats.id is the listing URL" risk — if this ever fires,

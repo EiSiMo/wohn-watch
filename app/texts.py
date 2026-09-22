@@ -31,8 +31,10 @@ HELP = (
     "/stop – alle Daten löschen\n"
     "/hilfe – diese Übersicht\n\n"
     "*Deine Daten*\n"
-    "Gespeichert wird nur deine Chat-ID und dein Filter — keine Namen, keine Telefonnummer, "
-    "keine Nachrichteninhalte. /stop löscht beides sofort und vollständig.\n\n"
+    "Gespeichert werden deine Chat-ID, dein Filter und ein Protokoll deiner "
+    "Nachrichten an mich — damit ich sehe, ob der Bot funktioniert und genutzt wird. "
+    "Keine Namen, keine Telefonnummer, keine Weitergabe an Dritte. "
+    "/stop löscht alles davon sofort und vollständig.\n\n"
     "*Wichtig*\n"
     "Ich bewerbe dich nicht automatisch. Du bekommst den Link, bewerben musst du dich selbst — "
     "bei den begehrten Wohnungen zählt jede Minute.\n\n"
@@ -45,6 +47,9 @@ SETUP_DONE = (
     "Ab jetzt melde ich dir jede neue passende Wohnung. Wohnungen, die schon vor "
     "dieser Einrichtung online waren, bekommst du bewusst nicht — sonst stünden hier "
     "gleich hundert veraltete Inserate.\n\n"
+    "⚡️ *Sei schnell.* Die Inserate sind oft nach rund 30 Minuten wieder offline. "
+    "Wenn eine Nachricht kommt, lohnt es sich, direkt zu reagieren und dich gleich "
+    "zu bewerben — nicht erst abends.\n\n"
     "Mit /pause machst du kurz Ruhe, mit /filter änderst du die Suche."
 )
 

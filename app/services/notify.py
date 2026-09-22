@@ -5,6 +5,7 @@ from telegram import Bot
 from telegram.constants import ParseMode
 from telegram.error import BadRequest
 
+from app import db
 from app.formatting import render_match
 
 logger = logging.getLogger("wohnwatch.notify")
@@ -17,6 +18,7 @@ async def send_match(bot: Bot, chat_id: int, flat: dict) -> None:
     400 — without this fallback the user would silently lose the alert.
     """
     markdown, plain = render_match(flat)
+    db.log_event(chat_id, "out", "match", flat.get("address", ""))
     try:
         await bot.send_message(
             chat_id, markdown, parse_mode=ParseMode.MARKDOWN,

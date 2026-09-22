@@ -16,8 +16,9 @@ from app.providers import PROVIDERS, PROVIDER_KEYS
 
 CB_LIMIT = 64
 
-# Screens in the order the guided setup walks them.
-WIZARD_SCREENS = ("rooms", "rent", "size", "wbs", "dist", "prov")
+# Screens in the order the guided setup walks them. Min and max rooms are
+# separate steps on purpose — one combined screen meant 18 buttons at once.
+WIZARD_SCREENS = ("rmin", "rmax", "rent", "size", "wbs", "dist", "prov")
 WIZARD_TOTAL = len(WIZARD_SCREENS)
 
 ROOM_PRESETS = (1, 1.5, 2, 2.5, 3, 3.5, 4, 5)
@@ -50,7 +51,14 @@ def cb(*parts) -> str:
 
 
 def _num(v) -> str:
+    """The value as it travels inside callback_data — always a dot, because
+    the other side does float()."""
     return "%g" % v
+
+
+def _label(v) -> str:
+    """The value as the user sees it on a button: German comma."""
+    return formatting._de(v, 1)
 
 
 def _btn(label: str, *data) -> InlineKeyboardButton:
@@ -75,22 +83,15 @@ def _nav(screen: str, wizard: bool) -> list[list[InlineKeyboardButton]]:
 
 # -- individual screens -----------------------------------------------------
 
-def _rooms_rows(f: dict) -> list[list[InlineKeyboardButton]]:
-    lo, hi = f.get("rooms_min"), f.get("rooms_max")
-    rows = []
-    for key, current in (("rmin", lo), ("rmax", hi)):
-        buttons = [
-            _btn("✓ egal" if current is None else "egal", "set", key, ANY)
-        ]
-        buttons += [
-            _btn(f"✓ {_num(v)}" if current == v else _num(v), "set", key, _num(v))
-            for v in ROOM_PRESETS
-        ]
-        rows += _chunk(buttons, 5)
-    rows.append([
-        _btn("Min. eingeben", "ask", "rmin"),
-        _btn("Max. eingeben", "ask", "rmax"),
-    ])
+def _room_bound_rows(f: dict, key: str) -> list[list[InlineKeyboardButton]]:
+    current = f.get(ASK_FIELDS[key])
+    buttons = [_btn("✓ egal" if current is None else "egal", "set", key, ANY)]
+    buttons += [
+        _btn(f"✓ {_label(v)}" if current == v else _label(v), "set", key, _num(v))
+        for v in ROOM_PRESETS
+    ]
+    rows = _chunk(buttons, 3)
+    rows.append([_btn("Eigener Wert", "ask", key)])
     return rows
 
 
@@ -138,7 +139,8 @@ def _provider_rows(f: dict) -> list[list[InlineKeyboardButton]]:
 
 
 _SCREEN_QUESTIONS = {
-    "rooms": texts.Q_ROOMS_MIN + "\n" + texts.Q_ROOMS_MAX,
+    "rmin": texts.Q_ROOMS_MIN,
+    "rmax": texts.Q_ROOMS_MAX,
     "rent": texts.Q_RENT,
     "size": texts.Q_SIZE,
     "wbs": texts.Q_WBS,
@@ -148,8 +150,8 @@ _SCREEN_QUESTIONS = {
 
 
 def _screen_rows(screen: str, f: dict) -> list[list[InlineKeyboardButton]]:
-    if screen == "rooms":
-        return _rooms_rows(f)
+    if screen in ("rmin", "rmax"):
+        return _room_bound_rows(f, screen)
     if screen == "rent":
         return _preset_rows(f, "max_rent", "rent", RENT_PRESETS, lambda v: f"{int(v)} €")
     if screen == "size":
@@ -167,7 +169,8 @@ def _screen_rows(screen: str, f: dict) -> list[list[InlineKeyboardButton]]:
 
 def render_root(f: dict) -> tuple[str, InlineKeyboardMarkup]:
     rows = [
-        [_btn(f"Zimmer: {formatting.label_rooms(f)}", "m", "rooms")],
+        [_btn(f"Zimmer ab: {formatting.label_room_bound(f, 'rooms_min')}", "m", "rmin")],
+        [_btn(f"Zimmer bis: {formatting.label_room_bound(f, 'rooms_max')}", "m", "rmax")],
         [_btn(f"Miete: {formatting.label_rent(f)}", "m", "rent")],
         [_btn(f"Größe: {formatting.label_size(f)}", "m", "size")],
         [_btn(f"WBS: {formatting.label_wbs(f)}", "m", "wbs")],

@@ -17,7 +17,7 @@ from app.handlers.callbacks import _fix_room_bounds
 logger = logging.getLogger("wohnwatch.text")
 
 _SCREEN_OF_FIELD = {
-    "rooms_min": "rooms", "rooms_max": "rooms",
+    "rooms_min": "rmin", "rooms_max": "rmax",
     "max_rent": "rent", "min_size": "size",
 }
 

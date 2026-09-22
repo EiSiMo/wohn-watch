@@ -37,6 +37,7 @@ async def reply(update, text: str, markup: InlineKeyboardMarkup | None = None) -
     await update.effective_message.reply_text(
         text, parse_mode=MD, reply_markup=markup, disable_web_page_preview=True,
     )
+    db.log_event(update.effective_chat.id, "out", "reply", text.split("\n", 1)[0])
 
 
 def activate(chat_id: int) -> None:

@@ -94,9 +94,11 @@ def test_full_setup_walk_activates_the_chat():
     s = Session()
     s.press("w:start")
     assert s.chat["state"] == "setup"
-    assert s.chat["setup_step"] == "rooms"
+    assert s.chat["setup_step"] == "rmin"
 
     s.press("set:rmin:2")
+    s.press("w:next")
+    assert s.chat["setup_step"] == "rmax"
     s.press("set:rmax:3")
     s.press("w:next")
     s.press("set:rent:1200")
@@ -143,9 +145,9 @@ def test_back_walks_the_wizard_backwards():
     s = Session()
     s.press("w:start")
     s.press("w:next")
-    assert s.chat["setup_step"] == "rent"
+    assert s.chat["setup_step"] == "rmax"
     s.press("w:back")
-    assert s.chat["setup_step"] == "rooms"
+    assert s.chat["setup_step"] == "rmin"
 
 
 # -- menu edits -------------------------------------------------------------

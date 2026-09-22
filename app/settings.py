@@ -31,3 +31,7 @@ LOG_LEVEL: str = os.environ.get("LOG_LEVEL", "INFO").upper()
 
 # Listings older than this are pruned by a daily job so the volume stays bounded.
 FLAT_RETENTION_DAYS: int = int(os.environ.get("FLAT_RETENTION_DAYS", "30"))
+
+# The usage log keeps message-level detail, so it is pruned too. The anonymous
+# lifetime counters in `meta` are never pruned.
+EVENT_RETENTION_DAYS: int = int(os.environ.get("EVENT_RETENTION_DAYS", "90"))

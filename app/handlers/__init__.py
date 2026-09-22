@@ -1,12 +1,17 @@
 """Handler registration — one place that wires commands, buttons and text."""
+from telegram import Update
 from telegram.ext import (
-    Application, CallbackQueryHandler, CommandHandler, MessageHandler, filters,
+    Application, CallbackQueryHandler, CommandHandler, MessageHandler,
+    TypeHandler, filters,
 )
 
-from app.handlers import callbacks, commands, errors, text_input
+from app.handlers import callbacks, commands, errors, text_input, tracking
 
 
 def register_handlers(app: Application) -> None:
+    # Group -1 runs first and logs every update without consuming it.
+    app.add_handler(TypeHandler(Update, tracking.track), group=-1)
+
     app.add_handler(CommandHandler("start", commands.start))
     app.add_handler(CommandHandler("filter", commands.filter_cmd))
     app.add_handler(CommandHandler("status", commands.status))

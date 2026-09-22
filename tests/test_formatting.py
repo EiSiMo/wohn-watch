@@ -71,7 +71,7 @@ def test_filter_summary():
     assert filter_summary({}) == "—"
     f = {"rooms_min": 2, "rooms_max": 3.5, "max_rent": 1500, "min_size": 60,
          "wbs_required": "no", "districts": "Mitte,Pankow", "providers": ""}
-    assert filter_summary(f) == "2–3.5 Zi · ≤ 1500 € · ≥ 60 m² · ohne WBS · 2 Bezirke"
+    assert filter_summary(f) == "2–3,5 Zi · ≤ 1500 € · ≥ 60 m² · ohne WBS · 2 Bezirke"
 
 
 def test_filter_summary_open_ended_rooms():

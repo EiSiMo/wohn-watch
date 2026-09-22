@@ -99,10 +99,15 @@ def label_rooms(f: dict) -> str:
     if lo is None and hi is None:
         return "egal"
     if lo is not None and hi is not None:
-        return f"{_num(lo)}–{_num(hi)}"
+        return f"{_de(lo, 1)}–{_de(hi, 1)}"
     if lo is not None:
-        return f"ab {_num(lo)}"
-    return f"bis {_num(hi)}"
+        return f"ab {_de(lo, 1)}"
+    return f"bis {_de(hi, 1)}"
+
+
+def label_room_bound(f: dict, field: str) -> str:
+    v = f.get(field)
+    return "egal" if v is None else _de(v, 1)
 
 
 def label_rent(f: dict) -> str:

@@ -41,7 +41,7 @@ def test_wizard_shows_progress_and_menu_does_not():
     f = {}
     wizard_text, _ = keyboards.render_screen("rent", f, wizard=True)
     menu_text, _ = keyboards.render_screen("rent", f, wizard=False)
-    assert "Schritt 2 von 6" in wizard_text
+    assert "Schritt 3 von 7" in wizard_text
     assert "Schritt" not in menu_text
 
 
@@ -56,6 +56,21 @@ def test_root_menu_exposes_every_criterion():
     data = [b.callback_data for row in markup.inline_keyboard for b in row]
     for screen in keyboards.WIZARD_SCREENS:
         assert f"m:{screen}" in data
+
+
+def test_room_bounds_are_separate_screens_with_few_buttons():
+    """Min and max used to share one screen, which meant 18 buttons at once."""
+    assert "rmin" in keyboards.WIZARD_SCREENS and "rmax" in keyboards.WIZARD_SCREENS
+    for screen in ("rmin", "rmax"):
+        _, markup = keyboards.render_screen(screen, {})
+        buttons = [b for row in markup.inline_keyboard for b in row]
+        assert len(buttons) <= 12
+
+
+def test_room_buttons_use_german_decimals():
+    _, markup = keyboards.render_screen("rmin", {})
+    labels = [b.text for row in markup.inline_keyboard for b in row]
+    assert "1,5" in labels and "1.5" not in labels
 
 
 def test_multi_select_marks_current_selection():
