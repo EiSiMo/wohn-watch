@@ -26,11 +26,9 @@ def _payload(flat_id: str) -> dict:
     }
 
 
-def test_migrations_are_idempotent():
-    before = db._current_version()
+def test_init_db_is_idempotent():
     db.init_db()
     db.init_db()
-    assert db._current_version() == before
 
 
 def test_upsert_is_true_only_on_first_insert():

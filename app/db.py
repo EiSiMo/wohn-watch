@@ -67,116 +67,84 @@ def _row(r) -> dict | None:
 
 
 # ---------------------------------------------------------------------------
-# Schema — numbered migrations, applied by index against schema_version
+# Schema
 # ---------------------------------------------------------------------------
 
-MIGRATIONS: list[str] = [
-    # v1
-    """
-    CREATE TABLE IF NOT EXISTS chats (
-        chat_id      INTEGER PRIMARY KEY,
-        state        TEXT NOT NULL DEFAULT 'new',
-        setup_step   TEXT NOT NULL DEFAULT '',
-        awaiting     TEXT NOT NULL DEFAULT '',
-        menu_msg_id  INTEGER,
-        notify_since TEXT,
-        created_at   TEXT NOT NULL,
-        updated_at   TEXT NOT NULL
-    );
+SCHEMA = """
+CREATE TABLE IF NOT EXISTS chats (
+    chat_id      INTEGER PRIMARY KEY,
+    state        TEXT NOT NULL DEFAULT 'new',
+    setup_step   TEXT NOT NULL DEFAULT '',
+    awaiting     TEXT NOT NULL DEFAULT '',
+    menu_msg_id  INTEGER,
+    notify_since TEXT,
+    language     TEXT NOT NULL DEFAULT 'de',
+    created_at   TEXT NOT NULL,
+    updated_at   TEXT NOT NULL
+);
 
-    CREATE TABLE IF NOT EXISTS chat_filters (
-        chat_id      INTEGER PRIMARY KEY REFERENCES chats(chat_id) ON DELETE CASCADE,
-        rooms_min    REAL,
-        rooms_max    REAL,
-        max_rent     REAL,
-        min_size     REAL,
-        wbs_required TEXT NOT NULL DEFAULT '',
-        districts    TEXT NOT NULL DEFAULT '',
-        providers    TEXT NOT NULL DEFAULT '',
-        updated_at   TEXT NOT NULL
-    );
+CREATE TABLE IF NOT EXISTS chat_filters (
+    chat_id      INTEGER PRIMARY KEY REFERENCES chats(chat_id) ON DELETE CASCADE,
+    rooms_min    REAL,
+    rooms_max    REAL,
+    max_rent     REAL,
+    min_size     REAL,
+    wbs_required TEXT NOT NULL DEFAULT '',
+    districts    TEXT NOT NULL DEFAULT '',
+    providers    TEXT NOT NULL DEFAULT '',
+    updated_at   TEXT NOT NULL
+);
 
-    CREATE TABLE IF NOT EXISTS flats (
-        id                 TEXT PRIMARY KEY,
-        source_id          TEXT NOT NULL DEFAULT '',
-        link               TEXT NOT NULL,
-        provider           TEXT NOT NULL DEFAULT 'unbekannt',
-        address            TEXT NOT NULL DEFAULT '',
-        district           TEXT,
-        rooms              REAL,
-        size               REAL,
-        total_rent         REAL,
-        sqm_price          REAL,
-        wbs                TEXT NOT NULL DEFAULT '',
-        address_link_gmaps TEXT NOT NULL DEFAULT '',
-        payload_json       TEXT NOT NULL,
-        discovered_at      TEXT NOT NULL,
-        last_seen_at       TEXT NOT NULL
-    );
-    CREATE INDEX IF NOT EXISTS idx_flats_discovered ON flats(discovered_at DESC);
-    CREATE INDEX IF NOT EXISTS idx_flats_source ON flats(source_id);
+CREATE TABLE IF NOT EXISTS flats (
+    id                 TEXT PRIMARY KEY,
+    source_id          TEXT NOT NULL DEFAULT '',
+    link               TEXT NOT NULL,
+    provider           TEXT NOT NULL DEFAULT 'unbekannt',
+    address            TEXT NOT NULL DEFAULT '',
+    district           TEXT,
+    rooms              REAL,
+    size               REAL,
+    total_rent         REAL,
+    sqm_price          REAL,
+    wbs                TEXT NOT NULL DEFAULT '',
+    address_link_gmaps TEXT NOT NULL DEFAULT '',
+    payload_json       TEXT NOT NULL,
+    discovered_at      TEXT NOT NULL,
+    last_seen_at       TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_flats_discovered ON flats(discovered_at DESC);
+CREATE INDEX IF NOT EXISTS idx_flats_source ON flats(source_id);
 
-    CREATE TABLE IF NOT EXISTS notifications (
-        chat_id INTEGER NOT NULL REFERENCES chats(chat_id) ON DELETE CASCADE,
-        flat_id TEXT    NOT NULL REFERENCES flats(id)     ON DELETE CASCADE,
-        sent_at TEXT    NOT NULL,
-        ok      INTEGER NOT NULL DEFAULT 1,
-        PRIMARY KEY (chat_id, flat_id)
-    );
+CREATE TABLE IF NOT EXISTS notifications (
+    chat_id INTEGER NOT NULL REFERENCES chats(chat_id) ON DELETE CASCADE,
+    flat_id TEXT    NOT NULL REFERENCES flats(id)     ON DELETE CASCADE,
+    sent_at TEXT    NOT NULL,
+    ok      INTEGER NOT NULL DEFAULT 1,
+    PRIMARY KEY (chat_id, flat_id)
+);
 
-    CREATE TABLE IF NOT EXISTS meta (
-        key   TEXT PRIMARY KEY,
-        value TEXT NOT NULL
-    );
-    """,
-    # v2 — usage log
-    """
-    CREATE TABLE IF NOT EXISTS events (
-        id        INTEGER PRIMARY KEY AUTOINCREMENT,
-        ts        TEXT    NOT NULL,
-        chat_id   INTEGER REFERENCES chats(chat_id) ON DELETE CASCADE,
-        direction TEXT    NOT NULL,          -- 'in' | 'out' | 'sys'
-        kind      TEXT    NOT NULL,          -- command | text | callback | match | reply | ...
-        detail    TEXT    NOT NULL DEFAULT ''
-    );
-    CREATE INDEX IF NOT EXISTS idx_events_ts ON events(ts DESC);
-    CREATE INDEX IF NOT EXISTS idx_events_chat ON events(chat_id);
-    """,
-    # v3 — per-chat language preference. Defaults to 'de' for backward
-    # compatibility with every chat that only ever saw German; new chats get
-    # their real language resolved from Telegram before this default is ever
-    # read (see handlers/tracking.py).
-    """
-    ALTER TABLE chats ADD COLUMN language TEXT NOT NULL DEFAULT 'de';
-    """,
-]
+CREATE TABLE IF NOT EXISTS meta (
+    key   TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+);
 
-
-def _current_version() -> int:
-    try:
-        row = _get_conn().execute(
-            "SELECT COALESCE(MAX(version), 0) AS v FROM schema_version"
-        ).fetchone()
-        return int(row["v"]) if row else 0
-    except sqlite3.Error:
-        return 0
+CREATE TABLE IF NOT EXISTS events (
+    id        INTEGER PRIMARY KEY AUTOINCREMENT,
+    ts        TEXT    NOT NULL,
+    chat_id   INTEGER REFERENCES chats(chat_id) ON DELETE CASCADE,
+    direction TEXT    NOT NULL,          -- 'in' | 'out' | 'sys'
+    kind      TEXT    NOT NULL,          -- command | text | callback | match | reply | ...
+    detail    TEXT    NOT NULL DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS idx_events_ts ON events(ts DESC);
+CREATE INDEX IF NOT EXISTS idx_events_chat ON events(chat_id);
+"""
 
 
 def init_db() -> None:
     with _lock:
-        _get_conn().execute(
-            "CREATE TABLE IF NOT EXISTS schema_version (version INTEGER PRIMARY KEY)"
-        )
-        current = _current_version()
-        for i, script in enumerate(MIGRATIONS, start=1):
-            if i <= current:
-                continue
-            logger.info("applying migration v%d", i)
-            _get_conn().executescript(script)
-            _get_conn().execute(
-                "INSERT OR IGNORE INTO schema_version(version) VALUES (?)", (i,)
-            )
-    logger.info("DB initialized (schema v%d)", _current_version())
+        _get_conn().executescript(SCHEMA)
+    logger.info("DB initialized")
 
 
 # ---------------------------------------------------------------------------
