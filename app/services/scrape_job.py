@@ -10,7 +10,7 @@ import time
 from telegram.error import BadRequest, Forbidden, NetworkError, TimedOut
 from telegram.ext import ContextTypes
 
-from app import db, settings, texts
+from app import db, i18n, settings
 from app.flat import Flat
 from app.matching import flat_filter_failures
 from app.scraper import Scraper
@@ -120,6 +120,7 @@ async def _scrape_tick(context: ContextTypes.DEFAULT_TYPE) -> None:
 
 async def _notify_chat(bot, chat: dict, new_flats: list[dict]) -> None:
     chat_id = chat["chat_id"]
+    lang = chat["language"]
     f = db.get_filter(chat_id)
     matches = [
         fl for fl in new_flats
@@ -132,7 +133,7 @@ async def _notify_chat(bot, chat: dict, new_flats: list[dict]) -> None:
 
     for fl in matches[:MAX_PER_CHAT_PER_TICK]:
         try:
-            await notify.send_match(bot, chat_id, fl)
+            await notify.send_match(bot, chat_id, fl, lang)
             db.mark_notified(chat_id, fl["id"], ok=True)
         except Forbidden:
             # Blocked, deleted, or kicked — this chat will never work again.
@@ -154,7 +155,7 @@ async def _notify_chat(bot, chat: dict, new_flats: list[dict]) -> None:
     overflow = len(matches) - MAX_PER_CHAT_PER_TICK
     if overflow > 0:
         try:
-            await bot.send_message(chat_id, texts.OVERFLOW.format(n=overflow),
+            await bot.send_message(chat_id, i18n.t("OVERFLOW", lang, n=overflow),
                                    parse_mode="Markdown")
         except Exception:
             logger.info("overflow notice failed for chat=%s", chat_id)

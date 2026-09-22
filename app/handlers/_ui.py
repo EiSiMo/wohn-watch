@@ -51,12 +51,12 @@ def activate(chat_id: int) -> None:
     )
 
 
-def state_label(chat: dict | None) -> str:
-    from app import texts
+def state_label(chat: dict | None, lang: str) -> str:
+    from app import i18n
 
     if not chat or chat["state"] in ("new", "setup"):
-        return texts.STATE_NEW
-    return texts.STATE_ACTIVE if chat["state"] == "active" else texts.STATE_PAUSED
+        return i18n.t("STATE_NEW", lang)
+    return i18n.t("STATE_ACTIVE" if chat["state"] == "active" else "STATE_PAUSED", lang)
 
 
 async def edit_menu_by_id(bot: Bot, chat_id: int, message_id: int, text: str,

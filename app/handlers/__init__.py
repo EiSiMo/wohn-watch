@@ -20,6 +20,7 @@ def register_handlers(app: Application) -> None:
     app.add_handler(CommandHandler("problem", commands.problem))
     app.add_handler(CommandHandler("stop", commands.stop))
     app.add_handler(CommandHandler(["hilfe", "help"], commands.help_cmd))
+    app.add_handler(CommandHandler(["language", "sprache"], commands.language_cmd))
 
     app.add_handler(CallbackQueryHandler(callbacks.route))
     # Anything that isn't a command: free-text answers to a pending question,

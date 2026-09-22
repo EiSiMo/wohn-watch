@@ -1,12 +1,11 @@
 """Entrypoint: one process running the Telegram bot and the scrape loop."""
 import logging
 
-from telegram import BotCommand
 from telegram.ext import AIORateLimiter, Application
 
-from app import db, settings
+from app import db, i18n, settings
 from app.handlers import register_handlers
-from app.handlers.commands import COMMANDS
+from app.handlers.commands import commands_for_menu
 from app.services.scrape_job import prune_job, scrape_tick
 
 logger = logging.getLogger("wohnwatch")
@@ -15,7 +14,10 @@ PRUNE_INTERVAL_SECONDS = 24 * 3600
 
 
 async def _post_init(app: Application) -> None:
-    await app.bot.set_my_commands([BotCommand(c, d) for c, d in COMMANDS])
+    for lang in i18n.SUPPORTED_LANGUAGES:
+        await app.bot.set_my_commands(commands_for_menu(lang), language_code=lang)
+    # Language-less default, for clients Telegram can't otherwise match.
+    await app.bot.set_my_commands(commands_for_menu(i18n.DEFAULT_LANGUAGE))
     me = await app.bot.get_me()
     logger.info("running as @%s, %d chats, %d flats known",
                 me.username, db.count_chats(), db.count_flats())

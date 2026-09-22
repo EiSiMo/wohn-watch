@@ -142,6 +142,13 @@ MIGRATIONS: list[str] = [
     CREATE INDEX IF NOT EXISTS idx_events_ts ON events(ts DESC);
     CREATE INDEX IF NOT EXISTS idx_events_chat ON events(chat_id);
     """,
+    # v3 — per-chat language preference. Defaults to 'de' for backward
+    # compatibility with every chat that only ever saw German; new chats get
+    # their real language resolved from Telegram before this default is ever
+    # read (see handlers/tracking.py).
+    """
+    ALTER TABLE chats ADD COLUMN language TEXT NOT NULL DEFAULT 'de';
+    """,
 ]
 
 
@@ -176,17 +183,29 @@ def init_db() -> None:
 # Chats
 # ---------------------------------------------------------------------------
 
-_CHAT_FIELDS = {"state", "setup_step", "awaiting", "menu_msg_id", "notify_since"}
+_CHAT_FIELDS = {"state", "setup_step", "awaiting", "menu_msg_id", "notify_since", "language"}
 
 
-def ensure_chat(chat_id: int) -> dict:
-    """Create the chat and its filter row if they don't exist yet. Idempotent."""
+def ensure_chat(chat_id: int, language: str | None = None) -> dict:
+    """Create the chat and its filter row if they don't exist yet. Idempotent.
+
+    `language` only takes effect on first creation (resolved from Telegram's
+    language_code by the caller) — it's silently ignored for an existing row,
+    same as the column DEFAULT is for every call site that doesn't pass one.
+    """
     with _lock, _tx() as c:
         ts = now_iso()
-        cur = c.execute(
-            "INSERT OR IGNORE INTO chats(chat_id, created_at, updated_at) VALUES (?, ?, ?)",
-            (chat_id, ts, ts),
-        )
+        if language:
+            cur = c.execute(
+                "INSERT OR IGNORE INTO chats(chat_id, language, created_at, updated_at) "
+                "VALUES (?, ?, ?, ?)",
+                (chat_id, language, ts, ts),
+            )
+        else:
+            cur = c.execute(
+                "INSERT OR IGNORE INTO chats(chat_id, created_at, updated_at) VALUES (?, ?, ?)",
+                (chat_id, ts, ts),
+            )
         created = cur.rowcount == 1
         c.execute(
             "INSERT OR IGNORE INTO chat_filters(chat_id, updated_at) VALUES (?, ?)",

@@ -68,9 +68,20 @@ def test_room_bounds_are_separate_screens_with_few_buttons():
 
 
 def test_room_buttons_use_german_decimals():
-    _, markup = keyboards.render_screen("rmin", {})
+    _, markup = keyboards.render_screen("rmin", {}, "de")
     labels = [b.text for row in markup.inline_keyboard for b in row]
     assert "1,5" in labels and "1.5" not in labels
+
+
+def test_room_buttons_use_english_decimals():
+    _, markup = keyboards.render_screen("rmin", {}, "en")
+    labels = [b.text for row in markup.inline_keyboard for b in row]
+    assert "1.5" in labels and "1,5" not in labels
+
+
+def test_wizard_shows_progress_in_english():
+    text, _ = keyboards.render_screen("rent", {}, "en", wizard=True)
+    assert "Step 3 of 7" in text
 
 
 def test_multi_select_marks_current_selection():
@@ -95,3 +106,12 @@ def test_provider_keys_all_have_buttons():
     data = [b.callback_data for row in markup.inline_keyboard for b in row]
     for key in PROVIDER_KEYS:
         assert f"tog:p:{key}" in data
+
+
+def test_language_picker_has_a_button_per_supported_language():
+    from app import i18n
+
+    markup = keyboards.render_language_picker()
+    data = [b.callback_data for row in markup.inline_keyboard for b in row]
+    for code in i18n.SUPPORTED_LANGUAGES:
+        assert f"lang:{code}" in data

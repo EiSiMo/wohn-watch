@@ -52,12 +52,14 @@ Domain der Inserats-URL.
 
 ## Befehle
 
-`/start` `/filter` `/status` `/pause` `/resume` `/problem` `/stop` `/hilfe`
+`/start` `/filter` `/status` `/pause` `/resume` `/problem` `/stop` `/sprache` `/hilfe`
 
 `/stop` löscht Chat, Filter, Zustellprotokoll und Nutzungslog per
-`ON DELETE CASCADE` endgültig. `/problem` nennt die Support-Adresse. Alles
-andere — Text, Sticker, Fotos — wird mit einer kurzen Befehlsübersicht
-beantwortet, nie mit Schweigen.
+`ON DELETE CASCADE` endgültig. `/problem` nennt die Support-Adresse.
+`/sprache` (bzw. `/language`) wechselt zwischen Deutsch und Englisch — die
+Startsprache richtet sich beim ersten Kontakt nach dem `language_code` des
+Telegram-Accounts. Alles andere — Text, Sticker, Fotos — wird mit einer
+kurzen Befehlsübersicht beantwortet, nie mit Schweigen.
 
 ## Nutzungslog
 
@@ -103,6 +105,19 @@ DATA_DIR=./data .venv/bin/python -m app.main
 ```
 
 Die Tests laufen ohne Netzwerk und ohne Telegram-Token.
+
+## Entwicklung
+
+Der Bot ist mehrsprachig (Deutsch/Englisch, `app/i18n/`). Einmalig nach dem
+Klonen:
+
+```bash
+git config core.hooksPath .githooks
+```
+
+Das aktiviert einen Pre-Commit-Hook, der `tests/test_i18n.py` ausführt und
+den Commit blockiert, wenn eine Sprache einen Übersetzungs-Key nicht hat
+oder die `.format()`-Platzhalter zwischen den Sprachen auseinanderlaufen.
 
 ## Scraper prüfen
 

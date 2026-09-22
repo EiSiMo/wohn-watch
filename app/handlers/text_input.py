@@ -9,8 +9,7 @@ import logging
 from telegram import Update
 from telegram.ext import ContextTypes
 
-from app import db, keyboards, texts
-from app.flat import Flat
+from app import db, formatting, i18n, keyboards
 from app.handlers import _ui
 from app.handlers.callbacks import _fix_room_bounds
 
@@ -25,28 +24,29 @@ _SCREEN_OF_FIELD = {
 async def on_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     chat_id = update.effective_chat.id
     chat = db.ensure_chat(chat_id)
+    lang = chat["language"]
     field = chat["awaiting"]
     text = update.effective_message.text
 
     if field not in keyboards.INPUT_RANGES:
-        await _ui.reply(update, texts.UNEXPECTED_TEXT)
+        await _ui.reply(update, i18n.t("UNEXPECTED_TEXT", lang))
         return
 
     if text is None:
         # A sticker or photo while we're waiting for a number: re-ask instead
         # of dropping the user out of the prompt.
-        await _ui.reply(update, texts.BAD_NUMBER)
+        await _ui.reply(update, i18n.t("BAD_NUMBER", lang))
         return
 
     raw = text.strip()
-    value = Flat._parse_german_float(raw)
+    value = formatting.parse_number(raw, lang)
     lo, hi = keyboards.INPUT_RANGES[field]
 
     if value == 0.0:
-        await _ui.reply(update, texts.BAD_NUMBER)
+        await _ui.reply(update, i18n.t("BAD_NUMBER", lang))
         return
     if not lo <= value <= hi:
-        await _ui.reply(update, texts.OUT_OF_RANGE.format(lo="%g" % lo, hi="%g" % hi))
+        await _ui.reply(update, i18n.t("OUT_OF_RANGE", lang, lo="%g" % lo, hi="%g" % hi))
         return
 
     db.update_filter(chat_id, {field: value})
@@ -55,7 +55,7 @@ async def on_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
 
     screen = _SCREEN_OF_FIELD[field]
     wizard = chat["state"] == "setup"
-    text, markup = keyboards.render_screen(screen, db.get_filter(chat_id), wizard=wizard)
+    text, markup = keyboards.render_screen(screen, db.get_filter(chat_id), lang, wizard=wizard)
 
     edited = False
     if chat["menu_msg_id"]:

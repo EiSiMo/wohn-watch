@@ -13,7 +13,7 @@ import logging
 from telegram import Update
 from telegram.ext import ContextTypes
 
-from app import db
+from app import db, i18n
 
 logger = logging.getLogger("wohnwatch.tracking")
 
@@ -46,7 +46,9 @@ async def track(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         chat = update.effective_chat
         if chat is None:
             return
-        db.ensure_chat(chat.id)
+        user = getattr(update, "effective_user", None)
+        code = getattr(user, "language_code", None) if user else None
+        db.ensure_chat(chat.id, language=i18n.resolve_language(code))
         kind, detail = _classify(update)
         db.log_event(chat.id, "in", kind, detail)
     except Exception:

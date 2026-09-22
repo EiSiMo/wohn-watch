@@ -3,8 +3,10 @@
 The match message keeps lazyflat's format character for character — it went
 through several rounds of tuning in web/notifications.py.
 """
+import re
 from urllib.parse import quote
 
+from app import i18n
 from app.providers import PROVIDER_KEYS, provider_label
 
 
@@ -25,32 +27,55 @@ def _gmaps_url(address: str) -> str:
     return f"https://www.google.com/maps/search/?api=1&query={quote(address or '')}"
 
 
-def _wbs_label(wbs: str) -> str:
+def _wbs_label(wbs: str, lang: str) -> str:
     w = (wbs or "").strip().lower()
     if w == "erforderlich":
-        return "erforderlich"
+        return i18n.t("WBS_REQUIRED", lang)
     if w in ("nicht erforderlich", "kein", "nein", "no", "ohne", "-", ""):
-        return "nicht erforderlich"
+        return i18n.t("WBS_NOT_REQUIRED", lang)
     return wbs  # pass through unrecognised literals
 
 
-def _de(v, decimals: int = 2, *, trim: bool = True, thousands: bool = False) -> str:
-    """A number the German way: comma as the decimal separator, optional dot
-    as the thousands separator, trailing zeros trimmed unless it's money."""
+# (decimal separator, thousands separator) per language.
+_SEPARATORS = {"de": (",", "."), "en": (".", ",")}
+
+
+def format_number(v, lang: str, decimals: int = 2, *, trim: bool = True, thousands: bool = False) -> str:
+    """A number the locale-correct way: German uses a comma as the decimal
+    separator and a dot for thousands, English the other way round. Trailing
+    zeros are trimmed unless it's money."""
     if v is None:
         return "—"
+    dec, thou = _SEPARATORS.get(lang, _SEPARATORS["en"])
     s = f"{v:,.{decimals}f}" if thousands else f"{v:.{decimals}f}"
     if trim and "." in s:
         s = s.rstrip("0").rstrip(".")
     # Swap the separators via a placeholder so the two passes can't collide.
-    return s.replace(",", "\x00").replace(".", ",").replace("\x00", ".")
+    return s.replace(",", "\x00").replace(".", dec).replace("\x00", thou)
 
 
-def _de_money(v) -> str:
-    return "—" if v is None else _de(v, 2, trim=False, thousands=True) + " €"
+def format_money(v, lang: str) -> str:
+    if v is None:
+        return "—"
+    return i18n.t("MONEY_FORMAT", lang, amount=format_number(v, lang, 2, trim=False, thousands=True))
 
 
-def render_match(flat: dict) -> tuple[str, str]:
+def parse_number(text: str, lang: str) -> float:
+    """Locale-aware inverse of format_number, for free-text user input (not
+    scraped data — that's always German-formatted and goes through
+    Flat._parse_german_float instead). Anything unparseable -> 0.0."""
+    if not text:
+        return 0.0
+    clean = re.sub(r"[^\d,.]", "", str(text))
+    dec, thou = _SEPARATORS.get(lang, _SEPARATORS["en"])
+    clean = clean.replace(thou, "").replace(dec, ".")
+    try:
+        return float(clean)
+    except ValueError:
+        return 0.0
+
+
+def render_match(flat: dict, lang: str = "de") -> tuple[str, str]:
     """Return (markdown, plain) for one match. The plain variant is the
     fallback when Telegram rejects the Markdown (unescaped _ * [ in an
     address would otherwise swallow the alert silently)."""
@@ -60,19 +85,19 @@ def render_match(flat: dict) -> tuple[str, str]:
     rooms = flat.get("rooms")
     size = flat.get("size")
     sqm_price = flat.get("sqm_price")
-    wbs_txt = _wbs_label(flat.get("wbs", ""))
+    wbs_txt = _wbs_label(flat.get("wbs", ""), lang)
     gmaps = flat.get("address_link_gmaps") or _gmaps_url(address)
 
-    rent_str = _de_money(flat.get("total_rent"))
+    rent_str = format_money(flat.get("total_rent"), lang)
     if sqm_price:
-        rent_str += f" ({_de(sqm_price, 2, trim=False)} €/m²)"
+        rent_str += f" ({format_number(sqm_price, lang, 2, trim=False)} €/m²)"
 
     facts = (
-        f"Miete: {rent_str}\n"
-        f"Fläche: {_de(size) + ' m²' if size is not None else '—'}\n"
-        f"Zimmer: {_de(rooms, 1)}\n"
-        f"WBS: {wbs_txt}\n"
-        f"Anbieter: {provider_label(flat.get('provider'))}\n"
+        f"{i18n.t('MATCH_RENT_LABEL', lang)}{rent_str}\n"
+        f"{i18n.t('MATCH_SIZE_LABEL', lang)}{format_number(size, lang) + ' m²' if size is not None else '—'}\n"
+        f"{i18n.t('MATCH_ROOMS_LABEL', lang)}{format_number(rooms, lang, 1)}\n"
+        f"{i18n.t('MATCH_WBS_LABEL', lang)}{wbs_txt}\n"
+        f"{i18n.t('MATCH_PROVIDER_LABEL', lang)}{provider_label(flat.get('provider'))}\n"
     )
 
     plain = f"{line1}\n{line2}\n{facts}\n{gmaps}\nOriginal: {link}"
@@ -83,7 +108,7 @@ def render_match(flat: dict) -> tuple[str, str]:
     addr_md = f"[{line1}]({gmaps})"
     if line2:
         addr_md += f"\n[{line2}]({gmaps})"
-    markdown = f"{addr_md}\n{facts}\n[Zur original Anzeige]({link})"
+    markdown = f"{addr_md}\n{facts}\n[{i18n.t('MATCH_LINK_LABEL', lang)}]({link})"
 
     return markdown, plain
 
@@ -94,82 +119,89 @@ def _num(x) -> str:
     return "%g" % x
 
 
-def label_rooms(f: dict) -> str:
+def label_rooms(f: dict, lang: str = "de") -> str:
     lo, hi = f.get("rooms_min"), f.get("rooms_max")
     if lo is None and hi is None:
-        return "egal"
+        return i18n.t("OPT_ANY", lang)
     if lo is not None and hi is not None:
-        return f"{_de(lo, 1)}–{_de(hi, 1)}"
+        return i18n.t("LABEL_ROOMS_RANGE", lang, lo=format_number(lo, lang, 1), hi=format_number(hi, lang, 1))
     if lo is not None:
-        return f"ab {_de(lo, 1)}"
-    return f"bis {_de(hi, 1)}"
+        return i18n.t("LABEL_ROOMS_FROM", lang, value=format_number(lo, lang, 1))
+    return i18n.t("LABEL_ROOMS_TO", lang, value=format_number(hi, lang, 1))
 
 
-def label_room_bound(f: dict, field: str) -> str:
+def label_room_bound(f: dict, field: str, lang: str = "de") -> str:
     v = f.get(field)
-    return "egal" if v is None else _de(v, 1)
+    return i18n.t("OPT_ANY", lang) if v is None else format_number(v, lang, 1)
 
 
-def label_rent(f: dict) -> str:
+def label_rent(f: dict, lang: str = "de") -> str:
     v = f.get("max_rent")
-    return "egal" if v is None else f"max. {int(v)} €"
+    return i18n.t("OPT_ANY", lang) if v is None else i18n.t("LABEL_RENT_MAX", lang, value=int(v))
 
 
-def label_size(f: dict) -> str:
+def label_size(f: dict, lang: str = "de") -> str:
     v = f.get("min_size")
-    return "egal" if v is None else f"ab {int(v)} m²"
+    return i18n.t("OPT_ANY", lang) if v is None else i18n.t("LABEL_SIZE_MIN", lang, value=int(v))
 
 
-def label_wbs(f: dict) -> str:
-    return {"yes": "nur mit WBS", "no": "nur ohne WBS"}.get(
-        (f.get("wbs_required") or "").strip(), "egal"
-    )
+def label_wbs(f: dict, lang: str = "de") -> str:
+    """The root-menu button label — reuses the keyboard's own "nur mit/ohne
+    WBS" wording, distinct from filter_summary's shorter "mit/ohne WBS"."""
+    key = (f.get("wbs_required") or "").strip()
+    if key == "yes":
+        return i18n.t("WBS_OPT_YES", lang)
+    if key == "no":
+        return i18n.t("WBS_OPT_NO", lang)
+    return i18n.t("OPT_ANY", lang)
 
 
 def _csv_list(value) -> list[str]:
     return [v.strip() for v in (value or "").split(",") if v.strip()]
 
 
-def label_districts(f: dict) -> str:
+def label_districts(f: dict, lang: str = "de") -> str:
     sel = _csv_list(f.get("districts"))
     if not sel:
-        return "alle"
+        return i18n.t("LABEL_ALL", lang)
     if len(sel) == 1:
         return sel[0]
-    return f"{len(sel)} ausgewählt"
+    return i18n.t("LABEL_SELECTED_N", lang, n=len(sel))
 
 
-def label_providers(f: dict) -> str:
+def label_providers(f: dict, lang: str = "de") -> str:
     sel = _csv_list(f.get("providers"))
     if not sel:
-        return "alle"
+        return i18n.t("LABEL_ALL", lang)
     if len(sel) == 1:
         return provider_label(sel[0])
-    return f"{len(sel)} ausgewählt"
+    return i18n.t("LABEL_SELECTED_N", lang, n=len(sel))
 
 
-def filter_summary(f: dict | None) -> str:
+def filter_summary(f: dict | None, lang: str = "de") -> str:
     """One-line summary, e.g. `2–3.5 Zi · ≤ 1500 € · ≥ 60 m² · ohne WBS · 4 Bezirke`."""
     if not f:
         return "—"
     parts: list[str] = []
     if f.get("rooms_min") is not None or f.get("rooms_max") is not None:
-        parts.append(f"{label_rooms(f)} Zi")
+        parts.append(f"{label_rooms(f, lang)} {i18n.t('UNIT_ROOMS_SUFFIX', lang)}")
     if f.get("max_rent"):
         parts.append(f"≤ {int(f['max_rent'])} €")
     if f.get("min_size"):
         parts.append(f"≥ {int(f['min_size'])} m²")
     if f.get("wbs_required") == "yes":
-        parts.append("mit WBS")
+        parts.append(i18n.t("LABEL_WITH_WBS", lang))
     elif f.get("wbs_required") == "no":
-        parts.append("ohne WBS")
+        parts.append(i18n.t("LABEL_WITHOUT_WBS", lang))
     n_d = len(_csv_list(f.get("districts")))
     if n_d:
-        parts.append(f"{n_d} Bezirk{'e' if n_d != 1 else ''}")
+        unit = i18n.t("UNIT_DISTRICT_SINGULAR" if n_d == 1 else "UNIT_DISTRICT_PLURAL", lang)
+        parts.append(f"{n_d} {unit}")
     n_p = len(_csv_list(f.get("providers")))
     if n_p and n_p < len(PROVIDER_KEYS):
-        parts.append(f"{n_p} Anbieter")
-    return " · ".join(parts) if parts else "keine Einschränkung"
+        unit = i18n.t("UNIT_PROVIDER_SINGULAR" if n_p == 1 else "UNIT_PROVIDER_PLURAL", lang)
+        parts.append(f"{n_p} {unit}")
+    return " · ".join(parts) if parts else i18n.t("LABEL_NO_RESTRICTION", lang)
 
 
 def selected_or_all(csv: str | None, all_items) -> set[str]:

@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+# Blocks a commit if a translation key is missing or its .format()
+# placeholders drift between locales. One-time setup after cloning:
+#   git config core.hooksPath .githooks
+set -euo pipefail
+
+PYTEST="pytest"
+[ -x ".venv/bin/pytest" ] && PYTEST=".venv/bin/pytest"
+
+echo "wohn-watch: checking translation completeness..."
+"$PYTEST" tests/test_i18n.py -q

@@ -304,7 +304,7 @@ def test_awaiting_survives_a_restart():
 # -- /problem ---------------------------------------------------------------
 
 def test_problem_command_gives_the_support_address():
-    from app import texts
+    from app import constants
     from app.handlers import commands
 
     s = Session()
@@ -314,17 +314,38 @@ def test_problem_command_gives_the_support_address():
         effective_message=msg,
     )
     asyncio.run(commands.problem(update, types.SimpleNamespace(bot=s.bot)))
-    assert texts.SUPPORT_EMAIL in msg.replies[0]
+    assert constants.SUPPORT_EMAIL in msg.replies[0]
 
 
 def test_support_address_is_plain_text_so_telegram_can_autolink_it():
     """A Markdown [label](mailto:…) is rejected by Telegram as a bad URL, so
     the address has to go out bare."""
-    from app import texts
-    assert "mailto:" not in texts.PROBLEM
-    assert f"]({texts.SUPPORT_EMAIL}" not in texts.PROBLEM
+    from app import constants, i18n
+    for lang in i18n.SUPPORTED_LANGUAGES:
+        problem = i18n.t("PROBLEM", lang, support_email=constants.SUPPORT_EMAIL)
+        assert "mailto:" not in problem
+        assert f"]({constants.SUPPORT_EMAIL}" not in problem
 
 
 def test_problem_is_registered_as_a_command():
-    from app.handlers.commands import COMMANDS
-    assert "problem" in [name for name, _ in COMMANDS]
+    from app.handlers.commands import COMMAND_NAMES
+    assert "problem" in COMMAND_NAMES
+
+
+# -- /language ----------------------------------------------------------------
+
+def test_language_switch_confirms_in_the_new_language_and_refreshes_the_menu():
+    s = Session()
+    q = s.press("lang:en")
+    assert "Language updated" in q.text
+    assert s.chat["language"] == "en"
+    assert s.bot.sent, "the currently open menu should have been refreshed"
+    assert "Your filter" in s.bot.sent[-1][1]
+
+
+def test_language_switch_rejects_unsupported_code():
+    s = Session()
+    q = s.press("lang:fr")
+    assert q.text is None
+    assert s.chat["language"] == "de"
+

@@ -11,13 +11,13 @@ from app.formatting import render_match
 logger = logging.getLogger("wohnwatch.notify")
 
 
-async def send_match(bot: Bot, chat_id: int, flat: dict) -> None:
+async def send_match(bot: Bot, chat_id: int, flat: dict, lang: str) -> None:
     """Send a match, falling back to plain text if Telegram rejects the Markdown.
 
     An address containing _ * [ or ` makes legacy Markdown parsing fail with
     400 — without this fallback the user would silently lose the alert.
     """
-    markdown, plain = render_match(flat)
+    markdown, plain = render_match(flat, lang)
     db.log_event(chat_id, "out", "match", flat.get("address", ""))
     try:
         await bot.send_message(

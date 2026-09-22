@@ -74,6 +74,27 @@ def test_ensure_chat_is_idempotent_and_creates_the_filter_row():
     assert db.get_filter(chat_id)["chat_id"] == chat_id
 
 
+def test_chat_language_defaults_to_german():
+    chat_id = _chat_id()
+    db.ensure_chat(chat_id)
+    assert db.get_chat(chat_id)["language"] == "de"
+
+
+def test_ensure_chat_seeds_language_only_on_first_creation():
+    chat_id = _chat_id()
+    db.ensure_chat(chat_id, language="en")
+    assert db.get_chat(chat_id)["language"] == "en"
+    db.ensure_chat(chat_id, language="de")  # existing row — must not overwrite
+    assert db.get_chat(chat_id)["language"] == "en"
+
+
+def test_set_chat_can_change_language():
+    chat_id = _chat_id()
+    db.ensure_chat(chat_id)
+    db.set_chat(chat_id, language="en")
+    assert db.get_chat(chat_id)["language"] == "en"
+
+
 def test_update_filter_allows_clearing_with_none():
     chat_id = _chat_id()
     db.ensure_chat(chat_id)
