@@ -335,12 +335,39 @@ def test_problem_is_registered_as_a_command():
 # -- /language ----------------------------------------------------------------
 
 def test_language_switch_confirms_in_the_new_language_and_refreshes_the_menu():
+    """The /language picker is sent as a plain reply (commands.language_cmd
+    uses _ui.reply, not send_menu), so its message_id never matches the
+    tracked menu_msg_id — the "lang" action must still go through despite
+    that mismatch, the same way "del" already does for /stop."""
     s = Session()
-    q = s.press("lang:en")
+    db.set_chat(s.chat_id, state="active", menu_msg_id=1)  # the /filter menu was open
+    assert s.menu_msg_id != 4242
+    q = s.press("lang:en", message_id=4242)
     assert "Language updated" in q.text
     assert s.chat["language"] == "en"
     assert s.bot.sent, "the currently open menu should have been refreshed"
     assert "Your filter" in s.bot.sent[-1][1]
+
+
+def test_language_switch_refreshes_the_welcome_screen_for_a_not_yet_set_up_chat():
+    """A chat that only ever saw /start's welcome screen must get that
+    screen back translated, not be shoved into the filter menu it never
+    opened — this was the actual bug reported: /sprache always showed the
+    filter picker, even for chats that hadn't set one up."""
+    s = Session()  # default state is "new"
+    q = s.press("lang:en", message_id=4242)
+    assert "Language updated" in q.text
+    assert s.bot.sent
+    assert "Wohn-Watch" in s.bot.sent[-1][1] and "Your filter" not in s.bot.sent[-1][1]
+
+
+def test_language_switch_without_an_open_menu_posts_nothing_extra():
+    s = Session()
+    db.set_chat(s.chat_id, menu_msg_id=None)
+    q = s.press("lang:en", message_id=4242)
+    assert "Language updated" in q.text
+    assert s.chat["language"] == "en"
+    assert not s.bot.sent, "no menu was open, so nothing extra should be posted"
 
 
 def test_language_switch_rejects_unsupported_code():

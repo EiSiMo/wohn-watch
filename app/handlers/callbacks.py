@@ -32,7 +32,9 @@ async def route(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     action = parts[0]
 
     # A second, older keyboard in the same chat would edit the wrong message.
-    if action not in ("del", "nop") and chat["menu_msg_id"] not in (None, query.message.message_id):
+    # "del" and "lang" are one-off replies (see commands.stop/language_cmd),
+    # never the tracked menu, so they're exempt the same way.
+    if action not in ("del", "nop", "lang") and chat["menu_msg_id"] not in (None, query.message.message_id):
         await query.answer(i18n.t("STALE_MENU", lang), show_alert=False)
         await _render_fresh(context, chat_id, lang)
         return
@@ -53,7 +55,9 @@ def _is_wizard(chat_id: int) -> bool:
 
 
 async def _render_fresh(context, chat_id: int, lang: str) -> None:
-    """Replace a stale menu with a new message at the chat's current position."""
+    """Replace a stale/outdated menu with a new message at the chat's actual
+    current position — a fresh chat that never opened /filter gets its
+    welcome screen back, not the filter menu it never asked for."""
     chat = db.get_chat(chat_id)
     f = db.get_filter(chat_id)
     step = chat["setup_step"] if chat else ""
@@ -61,6 +65,8 @@ async def _render_fresh(context, chat_id: int, lang: str) -> None:
         text, markup = keyboards.render_confirm(f, lang)
     elif step in keyboards.WIZARD_SCREENS:
         text, markup = keyboards.render_screen(step, f, lang, wizard=True)
+    elif chat and chat["state"] == "new":
+        text, markup = i18n.t("INTRO", lang), keyboards.render_intro(lang)
     else:
         text, markup = keyboards.render_root(f, lang)
     await _ui.send_menu(context.bot, chat_id, text, markup)
@@ -221,8 +227,12 @@ async def _on_language(query, context, chat_id, args, lang) -> None:
         return
     db.set_chat(chat_id, language=new_lang)
     await _ui.edit_menu(query, i18n.t("LANGUAGE_SET", new_lang))
-    # The currently open menu (if any) should reflect the new language too.
-    await _render_fresh(context, chat_id, new_lang)
+    # Only refresh if a menu was actually open (the picker itself is a plain
+    # reply, never the tracked menu) — otherwise /language would conjure up
+    # a filter menu the chat never asked for.
+    chat = db.get_chat(chat_id)
+    if chat and chat["menu_msg_id"] is not None:
+        await _render_fresh(context, chat_id, new_lang)
 
 
 async def _on_nop(query, context, chat_id, args, lang) -> None:
