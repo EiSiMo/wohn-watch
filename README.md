@@ -129,18 +129,14 @@ auffällig wenig trifft (braucht keine Zugangsdaten):
 .venv/bin/python -m app.scraper
 ```
 
-## Deployment (Coolify)
+## Deployment
 
-Als *Docker Compose*-Resource anlegen, die Variablen aus `.env.example` in die
-Env-UI eintragen, fertig. Es wird **keine Domain** gebraucht — der Bot pollt
-ausgehend und lauscht auf keinem Port.
+Reiner Docker-Container, kein Extra-Setup: `docker compose up -d --build` mit
+den Variablen aus `.env.example`. Es wird **keine Domain** gebraucht — der
+Bot pollt ausgehend und lauscht auf keinem Port.
 
 Der Healthcheck fragt die Datenbank, wann der letzte Scrape erfolgreich war;
 kein HTTP-Server nötig.
-
-> `${SOURCE_COMMIT}` nicht in der `docker-compose.yml` referenzieren — Coolify
-> behandelt das sonst als Nutzervariable und injiziert den echten Commit-SHA
-> nicht mehr.
 
 ## Herkunft
 
