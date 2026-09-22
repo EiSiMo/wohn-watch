@@ -27,7 +27,7 @@ HELP = (
     "/status – aktueller Filter und Statistik\n"
     "/pause – Benachrichtigungen aussetzen\n"
     "/resume – Benachrichtigungen fortsetzen\n"
-    "/problem – Problem melden oder Wunsch loswerden\n"
+    "/problem – Bei Problem oder Wunsch\n"
     "/stop – alle Daten löschen\n"
     "/hilfe – diese Übersicht\n\n"
     "*Deine Daten*\n"
@@ -38,7 +38,7 @@ HELP = (
     "*Wichtig*\n"
     "Ich bewerbe dich nicht automatisch. Du bekommst den Link, bewerben musst du dich selbst — "
     "bei den begehrten Wohnungen zählt jede Minute.\n\n"
-    "Quellcode: https://git.moritz.run/moritz/wohn-watch"
+    "Quellcode: https://github.com/EiSiMo/wohn-watch"
 )
 
 SETUP_DONE = (
@@ -131,7 +131,7 @@ OVERFLOW = (
 WIZARD_STEP = "*Schritt {n} von {total}*\n\n{question}"
 
 Q_ROOMS_MIN = "Wie viele Zimmer sollen es *mindestens* sein?"
-Q_ROOMS_MAX = "Und *höchstens*?"
+Q_ROOMS_MAX = "Und wie viele Zimmer sollen es *höchstens* sein?"
 Q_RENT = "Was darf die *Gesamtmiete* höchstens kosten?"
 Q_SIZE = "Wie viel *Wohnfläche* brauchst du mindestens?"
 Q_WBS = (
