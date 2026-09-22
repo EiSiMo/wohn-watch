@@ -52,10 +52,11 @@ Domain der Inserats-URL.
 
 ## Befehle
 
-`/start` `/filter` `/status` `/pause` `/resume` `/stop` `/hilfe`
+`/start` `/filter` `/status` `/pause` `/resume` `/problem` `/stop` `/hilfe`
 
 `/stop` löscht Chat, Filter und Zustellprotokoll per `ON DELETE CASCADE`
-endgültig.
+endgültig. `/problem` nennt die Support-Adresse. Alles andere — Text, Sticker,
+Fotos — wird mit einer kurzen Befehlsübersicht beantwortet, nie mit Schweigen.
 
 ## Lokal starten
 

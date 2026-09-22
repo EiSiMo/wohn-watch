@@ -227,7 +227,7 @@ class FakeMessage:
         self.replies.append(text)
 
 
-def _say(session: Session, text: str) -> FakeMessage:
+def _say(session: Session, text: str | None) -> FakeMessage:
     from app.handlers import text_input
 
     msg = FakeMessage(text)
@@ -236,7 +236,7 @@ def _say(session: Session, text: str) -> FakeMessage:
         effective_message=msg,
     )
     ctx = types.SimpleNamespace(bot=session.bot)
-    asyncio.run(text_input.on_text(update, ctx))
+    asyncio.run(text_input.on_message(update, ctx))
     return msg
 
 
@@ -265,10 +265,28 @@ def test_absurd_values_are_rejected():
     assert s.chat["awaiting"] == "max_rent"
 
 
-def test_unexpected_text_gets_a_pointer_not_silence():
+def test_unexpected_text_gets_the_command_list_not_silence():
     s = Session()
     msg = _say(s, "hallo?")
-    assert msg.replies and "/hilfe" in msg.replies[0]
+    reply = msg.replies[0]
+    for cmd in ("/start", "/filter", "/status", "/pause", "/resume",
+                "/problem", "/stop", "/hilfe"):
+        assert cmd in reply
+
+
+def test_non_text_message_while_a_question_is_open_re_asks():
+    """A sticker sent mid-prompt must not silently drop the user out of it."""
+    s = Session()
+    s.press("ask:rent")
+    msg = _say(s, None)
+    assert "Zahl" in msg.replies[0]
+    assert s.chat["awaiting"] == "max_rent"
+
+
+def test_non_text_message_outside_a_prompt_gets_the_command_list():
+    s = Session()
+    msg = _say(s, None)
+    assert "/hilfe" in msg.replies[0]
 
 
 def test_awaiting_survives_a_restart():
@@ -279,3 +297,32 @@ def test_awaiting_survives_a_restart():
     assert db.get_chat(s.chat_id)["awaiting"] == "min_size"
     _say(s, "60")
     assert s.filter["min_size"] == 60.0
+
+
+# -- /problem ---------------------------------------------------------------
+
+def test_problem_command_gives_the_support_address():
+    from app import texts
+    from app.handlers import commands
+
+    s = Session()
+    msg = FakeMessage("/problem")
+    update = types.SimpleNamespace(
+        effective_chat=types.SimpleNamespace(id=s.chat_id),
+        effective_message=msg,
+    )
+    asyncio.run(commands.problem(update, types.SimpleNamespace(bot=s.bot)))
+    assert texts.SUPPORT_EMAIL in msg.replies[0]
+
+
+def test_support_address_is_plain_text_so_telegram_can_autolink_it():
+    """A Markdown [label](mailto:…) is rejected by Telegram as a bad URL, so
+    the address has to go out bare."""
+    from app import texts
+    assert "mailto:" not in texts.PROBLEM
+    assert f"]({texts.SUPPORT_EMAIL}" not in texts.PROBLEM
+
+
+def test_problem_is_registered_as_a_command():
+    from app.handlers.commands import COMMANDS
+    assert "problem" in [name for name, _ in COMMANDS]

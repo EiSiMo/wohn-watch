@@ -27,6 +27,7 @@ HELP = (
     "/status – aktueller Filter und Statistik\n"
     "/pause – Benachrichtigungen aussetzen\n"
     "/resume – Benachrichtigungen fortsetzen\n"
+    "/problem – Problem melden oder Wunsch loswerden\n"
     "/stop – alle Daten löschen\n"
     "/hilfe – diese Übersicht\n\n"
     "*Deine Daten*\n"
@@ -93,8 +94,26 @@ BAD_NUMBER = "Das konnte ich nicht als Zahl lesen. Versuch's nochmal, z. B. `125
 OUT_OF_RANGE = "Der Wert wirkt unrealistisch ({lo}–{hi}). Schick mir bitte eine andere Zahl."
 
 UNEXPECTED_TEXT = (
-    "Damit kann ich nichts anfangen 🤔\n"
-    "Nutze /filter zum Einstellen deiner Suche oder /hilfe für alle Befehle."
+    "Damit kann ich nichts anfangen 🤔 Ich verstehe nur Befehle:\n\n"
+    "/start – Einführung und Einrichtung\n"
+    "/filter – Suche ändern\n"
+    "/status – aktueller Filter und Statistik\n"
+    "/pause – Benachrichtigungen aussetzen\n"
+    "/resume – Benachrichtigungen fortsetzen\n"
+    "/problem – etwas stimmt nicht?\n"
+    "/stop – alle Daten löschen\n"
+    "/hilfe – ausführliche Übersicht"
+)
+
+SUPPORT_EMAIL = "wohnwatch@moritz.run"
+
+PROBLEM = (
+    "*Etwas stimmt nicht?*\n\n"
+    "Schreib mir einfach eine Mail — Fehler, komische Treffer, fehlende "
+    "Wohnungen oder Wünsche, alles willkommen:\n\n"
+    f"{SUPPORT_EMAIL}\n\n"
+    "Hilfreich für mich: was du erwartet hast und was stattdessen passiert ist. "
+    "Mit /status siehst du deinen aktuellen Filter — den gerne mitschicken."
 )
 
 STALE_MENU = "Dieses Menü ist veraltet — ich habe dir ein frisches geöffnet."

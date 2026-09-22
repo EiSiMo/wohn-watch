@@ -15,6 +15,7 @@ COMMANDS = [
     ("status", "Filter und Statistik"),
     ("pause", "Benachrichtigungen aussetzen"),
     ("resume", "Benachrichtigungen fortsetzen"),
+    ("problem", "Problem melden"),
     ("stop", "Alle Daten löschen"),
     ("hilfe", "Übersicht aller Befehle"),
 ]
@@ -85,6 +86,12 @@ async def resume(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     # Bump the watermark: un-pausing after a week must not dump a week of listings.
     _ui.activate(chat_id)
     await _ui.reply(update, texts.RESUMED)
+
+
+async def problem(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    # The address goes out as plain text on purpose: Telegram auto-links email
+    # addresses, while a Markdown [label](mailto:…) is rejected as a bad URL.
+    await _ui.reply(update, texts.PROBLEM)
 
 
 async def stop(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:

@@ -22,16 +22,23 @@ _SCREEN_OF_FIELD = {
 }
 
 
-async def on_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+async def on_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     chat_id = update.effective_chat.id
     chat = db.ensure_chat(chat_id)
     field = chat["awaiting"]
+    text = update.effective_message.text
 
     if field not in keyboards.INPUT_RANGES:
         await _ui.reply(update, texts.UNEXPECTED_TEXT)
         return
 
-    raw = (update.effective_message.text or "").strip()
+    if text is None:
+        # A sticker or photo while we're waiting for a number: re-ask instead
+        # of dropping the user out of the prompt.
+        await _ui.reply(update, texts.BAD_NUMBER)
+        return
+
+    raw = text.strip()
     value = Flat._parse_german_float(raw)
     lo, hi = keyboards.INPUT_RANGES[field]
 

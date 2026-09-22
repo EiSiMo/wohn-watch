@@ -12,10 +12,15 @@ def register_handlers(app: Application) -> None:
     app.add_handler(CommandHandler("status", commands.status))
     app.add_handler(CommandHandler("pause", commands.pause))
     app.add_handler(CommandHandler("resume", commands.resume))
+    app.add_handler(CommandHandler("problem", commands.problem))
     app.add_handler(CommandHandler("stop", commands.stop))
     app.add_handler(CommandHandler(["hilfe", "help"], commands.help_cmd))
 
     app.add_handler(CallbackQueryHandler(callbacks.route))
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, text_input.on_text))
+    # Anything that isn't a command: free-text answers to a pending question,
+    # and otherwise a short reminder of what this bot understands. Stickers and
+    # photos land here too, so nothing a user sends is met with silence.
+    app.add_handler(MessageHandler(
+        ~filters.COMMAND & ~filters.StatusUpdate.ALL, text_input.on_message))
 
     app.add_error_handler(errors.on_error)
