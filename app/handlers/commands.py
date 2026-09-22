@@ -1,7 +1,7 @@
 """Slash commands."""
 import logging
 
-from telegram import BotCommand, Update
+from telegram import BotCommand, BotCommandScopeChat, Update
 from telegram.ext import ContextTypes
 
 from app import constants, db, formatting, i18n, keyboards
@@ -30,11 +30,22 @@ def commands_for_menu(lang: str) -> list[BotCommand]:
     ]
 
 
+async def sync_command_scope(bot, chat_id: int, lang: str) -> None:
+    """set_my_commands(language_code=...) (see main.py's _post_init) is keyed
+    off the Telegram *client's* language setting, not anything this bot
+    decides — so it never follows a chat's own /language choice. A per-chat
+    BotCommandScopeChat overrides that for this one chat regardless of the
+    client's language, which is what actually makes the "/" menu follow
+    /sprache."""
+    await bot.set_my_commands(commands_for_menu(lang), scope=BotCommandScopeChat(chat_id))
+
+
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     chat_id = update.effective_chat.id
     chat = db.ensure_chat(chat_id)
     db.set_chat(chat_id, awaiting="")
     lang = chat["language"]
+    await sync_command_scope(context.bot, chat_id, lang)
 
     if chat["state"] in ("active", "paused"):
         await _ui.reply(update, i18n.t("INTRO_RETURNING", lang,

@@ -11,6 +11,7 @@ from telegram.ext import ContextTypes
 from app import db, formatting, i18n, keyboards
 from app.berlin_districts import DISTRICTS
 from app.handlers import _ui
+from app.handlers.commands import sync_command_scope
 from app.providers import PROVIDER_KEYS
 
 logger = logging.getLogger("wohnwatch.callbacks")
@@ -222,17 +223,17 @@ async def _on_delete(query, context, chat_id, args, lang) -> None:
 
 
 async def _on_language(query, context, chat_id, args, lang) -> None:
+    """Just confirm and stop — no menu is (re-)opened here. Reconstructing
+    "whatever screen was open" kept guessing wrong (a fresh chat got shown
+    the filter menu it never opened; an active chat got its filter menu
+    reopened even when it wasn't on screen at all). /filter or /status show
+    the translated menu on demand instead."""
     new_lang = args[0] if args else ""
     if new_lang not in i18n.SUPPORTED_LANGUAGES:
         return
     db.set_chat(chat_id, language=new_lang)
+    await sync_command_scope(context.bot, chat_id, new_lang)
     await _ui.edit_menu(query, i18n.t("LANGUAGE_SET", new_lang))
-    # Only refresh if a menu was actually open (the picker itself is a plain
-    # reply, never the tracked menu) — otherwise /language would conjure up
-    # a filter menu the chat never asked for.
-    chat = db.get_chat(chat_id)
-    if chat and chat["menu_msg_id"] is not None:
-        await _render_fresh(context, chat_id, new_lang)
 
 
 async def _on_nop(query, context, chat_id, args, lang) -> None:

@@ -32,6 +32,7 @@ class FakeBot:
     def __init__(self):
         self.sent = []
         self.edited = []
+        self.command_scopes = []
         self._next_id = itertools.count(5000)
 
     async def send_message(self, chat_id, text, reply_markup=None, **kwargs):
@@ -41,6 +42,9 @@ class FakeBot:
 
     async def edit_message_text(self, text, chat_id=None, message_id=None, **kwargs):
         self.edited.append((chat_id, message_id, text))
+
+    async def set_my_commands(self, commands, scope=None, **kwargs):
+        self.command_scopes.append((scope, commands))
 
 
 @pytest.fixture(autouse=True)
@@ -334,40 +338,42 @@ def test_problem_is_registered_as_a_command():
 
 # -- /language ----------------------------------------------------------------
 
-def test_language_switch_confirms_in_the_new_language_and_refreshes_the_menu():
+def test_language_switch_confirms_in_the_new_language():
     """The /language picker is sent as a plain reply (commands.language_cmd
     uses _ui.reply, not send_menu), so its message_id never matches the
     tracked menu_msg_id — the "lang" action must still go through despite
     that mismatch, the same way "del" already does for /stop."""
     s = Session()
-    db.set_chat(s.chat_id, state="active", menu_msg_id=1)  # the /filter menu was open
     assert s.menu_msg_id != 4242
     q = s.press("lang:en", message_id=4242)
     assert "Language updated" in q.text
     assert s.chat["language"] == "en"
-    assert s.bot.sent, "the currently open menu should have been refreshed"
-    assert "Your filter" in s.bot.sent[-1][1]
 
 
-def test_language_switch_refreshes_the_welcome_screen_for_a_not_yet_set_up_chat():
-    """A chat that only ever saw /start's welcome screen must get that
-    screen back translated, not be shoved into the filter menu it never
-    opened — this was the actual bug reported: /sprache always showed the
-    filter picker, even for chats that hadn't set one up."""
-    s = Session()  # default state is "new"
-    q = s.press("lang:en", message_id=4242)
-    assert "Language updated" in q.text
-    assert s.bot.sent
-    assert "Wohn-Watch" in s.bot.sent[-1][1] and "Your filter" not in s.bot.sent[-1][1]
+def test_language_switch_never_pops_open_a_menu():
+    """/language only confirms — it must never reopen or reveal a filter menu
+    on its own, regardless of chat state. Guessing "the right screen to show"
+    kept guessing wrong (see git history), so it was dropped entirely."""
+    for state in ("new", "active", "paused", "setup"):
+        s = Session()
+        db.set_chat(s.chat_id, state=state, menu_msg_id=1)
+        s.press("lang:en", message_id=4242)
+        assert not s.bot.sent, f"state={state}: nothing should have been posted"
 
 
-def test_language_switch_without_an_open_menu_posts_nothing_extra():
+def test_language_switch_updates_the_per_chat_command_menu():
+    """set_my_commands(language_code=...) only follows the Telegram client's
+    own language setting, never our chat-level /language choice — so a
+    switch must push a BotCommandScopeChat override for this chat, or the
+    "/" menu's descriptions silently stay in the old language."""
+    from telegram import BotCommandScopeChat
+
     s = Session()
-    db.set_chat(s.chat_id, menu_msg_id=None)
-    q = s.press("lang:en", message_id=4242)
-    assert "Language updated" in q.text
-    assert s.chat["language"] == "en"
-    assert not s.bot.sent, "no menu was open, so nothing extra should be posted"
+    s.press("lang:en", message_id=4242)
+    assert s.bot.command_scopes, "no per-chat command menu was pushed"
+    scope, cmds = s.bot.command_scopes[-1]
+    assert isinstance(scope, BotCommandScopeChat) and scope.chat_id == s.chat_id
+    assert any(c.command == "language" for c in cmds)  # English trigger word
 
 
 def test_language_switch_rejects_unsupported_code():
