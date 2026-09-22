@@ -34,8 +34,20 @@ def _wbs_label(wbs: str) -> str:
     return wbs  # pass through unrecognised literals
 
 
-def _fmt_num(v) -> str:
-    return "—" if v is None else f"{v}"
+def _de(v, decimals: int = 2, *, trim: bool = True, thousands: bool = False) -> str:
+    """A number the German way: comma as the decimal separator, optional dot
+    as the thousands separator, trailing zeros trimmed unless it's money."""
+    if v is None:
+        return "—"
+    s = f"{v:,.{decimals}f}" if thousands else f"{v:.{decimals}f}"
+    if trim and "." in s:
+        s = s.rstrip("0").rstrip(".")
+    # Swap the separators via a placeholder so the two passes can't collide.
+    return s.replace(",", "\x00").replace(".", ",").replace("\x00", ".")
+
+
+def _de_money(v) -> str:
+    return "—" if v is None else _de(v, 2, trim=False, thousands=True) + " €"
 
 
 def render_match(flat: dict) -> tuple[str, str]:
@@ -51,15 +63,14 @@ def render_match(flat: dict) -> tuple[str, str]:
     wbs_txt = _wbs_label(flat.get("wbs", ""))
     gmaps = flat.get("address_link_gmaps") or _gmaps_url(address)
 
-    rent_str = _fmt_num(flat.get("total_rent"))
+    rent_str = _de_money(flat.get("total_rent"))
     if sqm_price:
-        # German-style decimal separator, rounded to the cent.
-        rent_str += f" ({sqm_price:.2f} €/m²)".replace(".", ",")
+        rent_str += f" ({_de(sqm_price, 2, trim=False)} €/m²)"
 
     facts = (
         f"Miete: {rent_str}\n"
-        f"Fläche: {_fmt_num(size)}\n"
-        f"Zimmer: {_fmt_num(rooms)}\n"
+        f"Fläche: {_de(size) + ' m²' if size is not None else '—'}\n"
+        f"Zimmer: {_de(rooms, 1)}\n"
         f"WBS: {wbs_txt}\n"
         f"Anbieter: {provider_label(flat.get('provider'))}\n"
     )
