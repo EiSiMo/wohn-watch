@@ -57,6 +57,8 @@ def fresh_db(tmp_path, monkeypatch):
 
 
 def _run(listings, bot, monkeypatch):
+    """Drive one tick against a stubbed scraper. `listings is None` simulates a
+    transient failure."""
     monkeypatch.setattr(scrape_job._scraper, "fetch", lambda: listings)
     asyncio.run(scrape_job._scrape_tick(_ctx(bot)))
 
@@ -188,7 +190,7 @@ def test_scrape_failure_backs_off_and_sends_nothing(monkeypatch):
 
     assert bot.sent == []
     assert db.get_meta("last_scrape_at") == before
-    assert db.get_meta("login_failures") == "1"
+    assert db.get_meta("scrape_failures") == "1"
     assert scrape_job._backoff.active()
 
     # While backed off, a tick must not even hit the scraper.

@@ -11,10 +11,12 @@ from app.providers import UNKNOWN
 # German labels per filter dimension, in stable display order.
 _REASON_ORDER = ("Zimmer", "Preis", "Größe", "WBS", "Bezirk", "Anbieter")
 
-# The scraper writes the literal label from inberlinwohnen.de — currently
-# "erforderlich" / "nicht erforderlich". The historical short forms remain
-# as a safety net in case the page wording changes.
-_WBS_NOT_REQUIRED_LITERALS = ("nicht erforderlich", "kein", "nein", "no", "ohne", "-")
+# The scraper writes the literal label from inberlinwohnen.de. A census of all
+# 365 live listings found three values: "erforderlich" (90), "nicht
+# erforderlich" (271) and "unbekannt" (4). The short forms remain as a safety
+# net in case the page wording changes.
+_WBS_NOT_REQUIRED_LITERALS = ("nicht erforderlich", "kein", "nein", "no", "ohne", "-", "")
+_WBS_REQUIRED_LITERALS = ("erforderlich", "ja", "yes", "wbs")
 
 
 def _csv_set(value) -> set[str]:
@@ -48,13 +50,14 @@ def flat_filter_failures(flat: dict, f: dict | None) -> list[str]:
     if f.get("min_size") is not None and size < float(f["min_size"]):
         failures.add("Größe")
 
+    # Three-way, because the portal really does publish "unbekannt". An
+    # undetermined WBS status fails either direction, same rule as an
+    # undetermined Bezirk or Anbieter.
     wbs_req = (f.get("wbs_required") or "").strip().lower()
-    if wbs_req == "yes":
-        if not wbs_str or wbs_str in _WBS_NOT_REQUIRED_LITERALS:
-            failures.add("WBS")
-    elif wbs_req == "no":
-        if wbs_str and wbs_str not in _WBS_NOT_REQUIRED_LITERALS:
-            failures.add("WBS")
+    if wbs_req == "yes" and wbs_str not in _WBS_REQUIRED_LITERALS:
+        failures.add("WBS")
+    elif wbs_req == "no" and wbs_str not in _WBS_NOT_REQUIRED_LITERALS:
+        failures.add("WBS")
 
     selected_districts = _csv_set(f.get("districts"))
     if selected_districts:

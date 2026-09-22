@@ -26,7 +26,7 @@ _BACKOFF_CAP = 1800  # 30 minutes
 
 class _Backoff:
     """Exponential backoff for scrape failures. Users never see these —
-    a broken login is our problem, not theirs."""
+    a flaky site is our problem, not theirs."""
 
     def __init__(self, base: int):
         self.base = base
@@ -48,7 +48,7 @@ class _Backoff:
 
 
 _backoff = _Backoff(settings.SCRAPE_INTERVAL_SECONDS)
-_scraper = Scraper(settings.BERLIN_WOHNEN_USERNAME, settings.BERLIN_WOHNEN_PASSWORD)
+_scraper = Scraper()
 _tick_lock = asyncio.Lock()
 
 
@@ -65,22 +65,18 @@ async def scrape_tick(context: ContextTypes.DEFAULT_TYPE) -> None:
                            elapsed, settings.SCRAPE_INTERVAL_SECONDS)
 
 
-async def _scrape_tick(context: ContextTypes.DEFAULT_TYPE) -> None:
-    if _backoff.active():
-        return
+def _scrape_and_store() -> list[dict] | None:
+    """Scrape and persist, in a worker thread. Returns the newly inserted
+    flats, or None on a transient failure.
 
-    raw = await asyncio.to_thread(_scraper.fetch)
+    One page is enough: it holds the 10 newest listings and the portal
+    publishes a handful at a time, so nothing falls off before we see it.
+    """
+    raw = _scraper.fetch()
     if raw is None:
-        delay = _backoff.fail()
-        n = db.incr_meta("login_failures")
-        logger.warning("scrape failed (%d in a row), retrying in %ds", n, delay)
-        return
+        return None
 
-    _backoff.reset()
-    db.set_meta("last_scrape_at", db.now_iso())
-    db.set_meta("login_failures", "0")
-
-    new_flats = []
+    new_flats: list[dict] = []
     for data in raw:
         payload = Flat(data).to_payload()
         if db.upsert_flat(payload):
@@ -88,6 +84,23 @@ async def _scrape_tick(context: ContextTypes.DEFAULT_TYPE) -> None:
             flat = db.get_flat(payload["id"])
             if flat:
                 new_flats.append(flat)
+    return new_flats
+
+
+async def _scrape_tick(context: ContextTypes.DEFAULT_TYPE) -> None:
+    if _backoff.active():
+        return
+
+    new_flats = await asyncio.to_thread(_scrape_and_store)
+    if new_flats is None:
+        delay = _backoff.fail()
+        n = db.incr_meta("scrape_failures")
+        logger.warning("scrape failed (%d in a row), retrying in %ds", n, delay)
+        return
+
+    _backoff.reset()
+    db.set_meta("last_scrape_at", db.now_iso())
+    db.set_meta("scrape_failures", "0")
 
     if db.get_meta("bootstrap_done") != "1":
         db.set_meta("bootstrap_done", "1")

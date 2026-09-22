@@ -17,10 +17,9 @@ def _required(name: str) -> str:
     return value
 
 
+# The only secret this bot has. inberlinwohnen.de is scraped without an
+# account — the public Wohnungsfinder carries the same listings and fields.
 TELEGRAM_BOT_TOKEN: str = _required("TELEGRAM_BOT_TOKEN")
-
-BERLIN_WOHNEN_USERNAME: str = _required("BERLIN_WOHNEN_USERNAME")
-BERLIN_WOHNEN_PASSWORD: str = _required("BERLIN_WOHNEN_PASSWORD")
 
 SCRAPE_INTERVAL_SECONDS: int = int(os.environ.get("SCRAPE_INTERVAL_SECONDS", "60"))
 

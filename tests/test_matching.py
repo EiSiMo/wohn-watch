@@ -88,3 +88,12 @@ def test_failures_are_ordered_and_unique():
 def test_every_district_name_is_matchable():
     for d in DISTRICTS:
         assert flat_filter_failures(dict(FLAT, district=d), {"districts": d}) == []
+
+
+def test_unknown_wbs_is_excluded_by_either_direction():
+    """The portal really publishes "unbekannt" (4 of 365 listings). An
+    undetermined status must not sneak past a filter in either direction."""
+    unknown = dict(FLAT, wbs="unbekannt")
+    assert flat_filter_failures(unknown, {"wbs_required": ""}) == []
+    assert flat_filter_failures(unknown, {"wbs_required": "no"}) == ["WBS"]
+    assert flat_filter_failures(unknown, {"wbs_required": "yes"}) == ["WBS"]

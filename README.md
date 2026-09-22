@@ -18,7 +18,13 @@ ausgeführt.
 
 ## Funktionsweise
 
-Alle 60 Sekunden wird der Wohnungsfinder geladen. Jedes Inserat landet in der
+Alle 60 Sekunden wird der öffentliche Wohnungsfinder geladen — **ohne Konto**.
+Die Seite `/wohnungsfinder` liefert dieselben Inserate und dieselben Felder wie
+der eingeloggte Bereich, WBS eingeschlossen. Gelesen wird nur die erste Seite:
+sie enthält die 10 neuesten Inserate (`created_at desc`), und es erscheinen nie
+mehr als eine Handvoll auf einmal.
+
+Jedes Inserat landet in der
 `flats`-Tabelle — der Primärschlüssel ist die Inserats-URL, und `INSERT OR IGNORE`
 meldet zurück, ob es neu war. Nur wirklich neue Inserate werden gegen die Filter
 aller aktiven Chats geprüft und verschickt.
@@ -54,7 +60,7 @@ endgültig.
 ## Lokal starten
 
 ```bash
-cp .env.example .env     # TELEGRAM_BOT_TOKEN + inberlinwohnen-Zugangsdaten eintragen
+cp .env.example .env     # nur TELEGRAM_BOT_TOKEN eintragen
 docker compose up -d --build
 docker compose logs -f
 ```
@@ -79,7 +85,7 @@ Die Tests laufen ohne Netzwerk und ohne Telegram-Token.
 
 Ein einzelner Live-Durchlauf, der zeigt welche Felder die Seite gerade liefert und
 auf welche Domains die Inserate zeigen — nützlich, wenn der Anbieter-Filter
-auffällig wenig trifft:
+auffällig wenig trifft (braucht keine Zugangsdaten):
 
 ```bash
 .venv/bin/python -m app.scraper
@@ -103,3 +109,7 @@ kein HTTP-Server nötig.
 Scraper, Matching-Logik, PLZ→Bezirk-Tabelle und das Format der
 Match-Nachricht stammen aus [lazyflat](https://git.moritz.run/moritz/lazyflat);
 Web-UI und der experimentelle Auto-Bewerber sind dabei weggefallen.
+
+Zwei Dinge macht wohn-watch anders als lazyflat: es liest die öffentliche Seite
+statt sich einzuloggen, und es wertet **alle** `<dl>`-Blöcke einer Anzeige aus.
+lazyflat las nur den ersten und verlor damit öffentlich das WBS-Feld.
