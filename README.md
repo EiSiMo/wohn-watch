@@ -1,71 +1,71 @@
 <p align="center">
-  <img src="assets/logo.png" width="160" alt="wohn-watch Logo">
+  <img src="assets/logo.png" width="160" alt="wohn-watch logo">
 </p>
 
 <h1 align="center">wohn-watch</h1>
 
 <p align="center">
-  Telegram-Bot, der dir neue Wohnungen der landeseigenen Berliner Wohnungsgesellschaften sofort aufs Handy schickt.
+  A Telegram bot that sends new apartments from Berlin's state-owned housing associations straight to your phone.
 </p>
 
 <p align="center">
-  <img src="assets/screenshot-1.png" width="30%" alt="Neue Inserate im Chat">
+  <img src="assets/screenshot-1.png" width="30%" alt="New listings in the chat">
   &nbsp;
-  <img src="assets/screenshot-2.png" width="30%" alt="Filter einstellen">
+  <img src="assets/screenshot-2.png" width="30%" alt="Setting up the filter">
   &nbsp;
-  <img src="assets/screenshot-3.png" width="30%" alt="Begrüßung mit /start">
+  <img src="assets/screenshot-3.png" width="30%" alt="Welcome message after /start">
 </p>
 
-Günstige Wohnungen sind in Berlin oft nach wenigen Minuten weg. wohn-watch schaut
-rund um die Uhr auf [inberlinwohnen.de](https://inberlinwohnen.de) nach und schickt
-dir jedes neue Angebot, das zu deiner Suche passt, direkt per Telegram. Dabei sind
-HOWOGE, degewo, Gewobag, GESOBAU, Stadt und Land, WBM und berlinovo.
+Affordable apartments in Berlin are often gone within minutes. wohn-watch checks
+[inberlinwohnen.de](https://inberlinwohnen.de) around the clock and sends you every
+new listing that matches your search, right in Telegram. It covers HOWOGE, degewo,
+Gewobag, GESOBAU, Stadt und Land, WBM and berlinovo.
 
 <p align="center">
   <a href="#install">Install</a> ·
-  <a href="#befehle">Befehle</a> ·
-  <a href="#filter">Filter</a> ·
-  <a href="#lizenz">Lizenz</a>
+  <a href="#commands">Commands</a> ·
+  <a href="#filters">Filters</a> ·
+  <a href="#license">License</a>
 </p>
 
 ## Install
 
-Du brauchst Docker und einen Bot-Token von [@BotFather](https://t.me/BotFather).
+You need Docker and a bot token from [@BotFather](https://t.me/BotFather).
 
 ```bash
 git clone https://github.com/EiSiMo/wohn-watch.git && cd wohn-watch
-cp .env.example .env        # TELEGRAM_BOT_TOKEN eintragen, alles andere ist optional
+cp .env.example .env        # set TELEGRAM_BOT_TOKEN, everything else is optional
 docker compose up -d --build
 ```
 
-Du brauchst keine Domain und keinen offenen Port, weil der Bot Telegram von sich
-aus abfragt. Die SQLite-Datenbank liegt im Volume `wohnwatch_data`.
+You don't need a domain or an open port, because the bot polls Telegram itself.
+The SQLite database lives in the `wohnwatch_data` volume.
 
-## Befehle
+## Commands
 
-| Befehl | Funktion |
+| Command | Description |
 |---|---|
-| `/start` | Einführung und Einrichtung |
-| [`/filter`](#filter) | Suche ändern |
-| `/status` | Filter und Statistik |
-| `/pause` | Benachrichtigungen aussetzen |
-| `/resume` | Benachrichtigungen fortsetzen |
-| `/sprache` | Sprache wechseln (Deutsch/Englisch) |
-| `/problem` | Problem melden |
-| `/stop` | Alle Daten löschen |
-| `/hilfe` | Übersicht aller Befehle |
+| `/start` | Introduction and setup |
+| [`/filter`](#filters) | Change your search |
+| `/status` | Filter and stats |
+| `/pause` | Pause notifications |
+| `/resume` | Resume notifications |
+| `/language` | Switch language (English/German) |
+| `/problem` | Report a problem |
+| `/stop` | Delete all data |
+| `/help` | Overview of all commands |
 
-### Filter
+### Filters
 
-| Filter | Erklärung |
+| Filter | Description |
 |---|---|
-| Zimmer | Mindest- und Höchstzahl, halbe Zimmer möglich |
-| Miete | Höchste Gesamtmiete in € |
-| Fläche | Mindestgröße in m² |
-| WBS | egal, nur ohne oder nur mit WBS |
-| Bezirke | Eine beliebige Auswahl der 12 Berliner Bezirke |
-| Anbieter | Eine beliebige Auswahl der Wohnungsgesellschaften |
+| Rooms | Minimum and maximum, half rooms allowed |
+| Rent | Maximum total rent in € |
+| Size | Minimum size in m² |
+| WBS | Any, only without or only with a WBS (housing permit) |
+| Districts | Any selection of Berlin's 12 districts |
+| Providers | Any selection of the housing associations |
 
-## Lizenz
+## License
 
 [MIT](LICENSE)
