@@ -9,11 +9,11 @@
 </p>
 
 <p align="center">
-  <img src="assets/screenshot-1.png" width="30%" alt="New listings in the chat">
+  <img src="assets/screenshot-1.png" width="30%" alt="Welcome message after /start">
   &nbsp;
   <img src="assets/screenshot-2.png" width="30%" alt="Setting up the filter">
   &nbsp;
-  <img src="assets/screenshot-3.png" width="30%" alt="Welcome message after /start">
+  <img src="assets/screenshot-3.png" width="30%" alt="New listings in the chat">
 </p>
 
 Affordable apartments in Berlin are often gone within minutes. wohn-watch checks
