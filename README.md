@@ -30,7 +30,13 @@ Gewobag, GESOBAU, Stadt und Land, WBM and berlinovo.
 
 ## Install
 
-You need Docker and a bot token from [@BotFather](https://t.me/BotFather).
+<p align="center">
+  <a href="https://t.me/wohnwatch_bot"><img src="assets/qr.png" width="200" alt="QR code for @wohnwatch_bot"></a>
+  <br>
+  <sub>Don't want to host it yourself? Just use mine: <a href="https://t.me/wohnwatch_bot">@wohnwatch_bot</a></sub>
+</p>
+
+To run your own instance, you need Docker and a bot token from [@BotFather](https://t.me/BotFather).
 
 ```bash
 git clone https://github.com/EiSiMo/wohn-watch.git && cd wohn-watch
