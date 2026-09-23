@@ -39,7 +39,6 @@ docker compose up -d --build
 ```
 
 You don't need a domain or an open port, because the bot polls Telegram itself.
-The SQLite database lives in the `wohnwatch_data` volume.
 
 ## Commands
 
