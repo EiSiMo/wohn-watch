@@ -46,7 +46,7 @@ The SQLite database lives in the `wohnwatch_data` volume.
 | Command | Description |
 |---|---|
 | `/start` | Introduction and setup |
-| [`/filter`](#filters) | Change your search |
+| `/filter` | Change your search |
 | `/status` | Filter and stats |
 | `/pause` | Pause notifications |
 | `/resume` | Resume notifications |
