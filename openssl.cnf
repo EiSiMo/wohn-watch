@@ -1,0 +1,15 @@
+# Leaves the post-quantum X25519MLKEM768 key share out of TLS handshakes.
+# It pushes the ClientHello to about 1500 bytes, so it spans two TCP segments,
+# and about one in five such connections to Telegram was reset on the Pi (WiFi).
+# With a classic key share the hello is 517 bytes and those resets stop.
+# The container startup log reports the resulting size, see app/services/net_diag.py.
+openssl_conf = openssl_init
+
+[openssl_init]
+ssl_conf = ssl_configuration
+
+[ssl_configuration]
+system_default = system_default_sect
+
+[system_default_sect]
+Groups = X25519:secp256r1:secp384r1

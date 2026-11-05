@@ -6,11 +6,13 @@ from telegram.ext import AIORateLimiter, Application
 from app import db, i18n, settings
 from app.handlers import register_handlers
 from app.handlers.commands import commands_for_menu
+from app.services.net_diag import log_tls_setup, probe_job
 from app.services.scrape_job import prune_job, scrape_tick
 
 logger = logging.getLogger("wohnwatch")
 
 PRUNE_INTERVAL_SECONDS = 24 * 3600
+NET_PROBE_INTERVAL_SECONDS = 600
 
 
 async def _post_init(app: Application) -> None:
@@ -40,6 +42,9 @@ def build_app() -> Application:
     app.job_queue.run_repeating(
         prune_job, interval=PRUNE_INTERVAL_SECONDS, first=3600, name="prune"
     )
+    app.job_queue.run_repeating(
+        probe_job, interval=NET_PROBE_INTERVAL_SECONDS, first=30, name="net_probe"
+    )
     return app
 
 
@@ -51,6 +56,7 @@ def main() -> None:
     logging.getLogger("httpx").setLevel(logging.WARNING)
 
     db.init_db()
+    log_tls_setup()
     app = build_app()
     logger.info("starting polling (interval=%ss)", settings.SCRAPE_INTERVAL_SECONDS)
     # Keep updates sent during a redeploy instead of dropping them.

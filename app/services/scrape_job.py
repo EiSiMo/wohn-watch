@@ -15,6 +15,7 @@ from app.flat import Flat
 from app.matching import flat_filter_failures
 from app.scraper import Scraper
 from app.services import notify
+from app.services.net_diag import describe_error
 
 logger = logging.getLogger("wohnwatch.scrape")
 
@@ -149,7 +150,7 @@ async def _notify_chat(bot, chat: dict, new_flats: list[dict]) -> None:
         except (TimedOut, NetworkError) as e:
             # Deliberately not retried: a flat alert five minutes late is
             # worthless, and the row stops us trying again next tick.
-            logger.warning("send timed out for chat=%s: %s", chat_id, e)
+            logger.warning("send timed out for chat=%s: %s", chat_id, describe_error(e))
             db.mark_notified(chat_id, fl["id"], ok=False)
 
     overflow = len(matches) - MAX_PER_CHAT_PER_TICK
